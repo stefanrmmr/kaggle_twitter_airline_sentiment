@@ -3,14 +3,21 @@
 PROJECT for: TUM [Python for Engineering Data Analysis - from Machine Learning to Visualization]
 summer semester 2021, development of a tweet text sentiment analysis model using an LSTM approach
  
+IMPLEMENTATION & METRICS
+
   - exploratory data analysis 
   - twitter API integration
   - tweet text preprocessing
-  - 
-  - 
-  - 
-  - 
+  - word embedding/tokenization
+  - LSTM model for classification
+  - Hyper parameter tuning
+  - history accuracy, loss
+  - metrics precsion, recall,  F1
+  - confusion matrix
   
+USE CASES & APPLICATION
 
-
-
+  - analyze most recent tweets for specific airlines using titter API, 
+    compare accuracy achived (label these tweets manually) to data from kaggle
+  - analyze sentiment evolution over time durnig the COVID crisis Dez2019 - Aug2021
+ 
