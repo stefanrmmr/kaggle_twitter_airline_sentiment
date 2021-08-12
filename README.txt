@@ -1,3 +1,5 @@
+@adrianbruenger @stefanrmmr
+
 PROJECT for: TUM [Python for Engineering Data Analysis - from Machine Learning to Visualization]
 summer semester 2021, development of a tweet text sentiment analysis model using an LSTM approach
  
@@ -5,9 +7,10 @@ summer semester 2021, development of a tweet text sentiment analysis model using
   - twitter API integration
   - tweet text preprocessing
   - 
-  -
+  - 
+  - 
+  - 
   
 
-Adrian Brünger 
-Stefan Rummer
+
 
