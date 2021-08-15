@@ -12,7 +12,7 @@ IMPLEMENTATION & METRICS
   - LSTM model for classification
   - Hyper parameter tuning
   - history accuracy, loss
-  - metrics precsion, recall,  F1
+  - metrics precsion, recall
   - confusion matrix
   
 USE CASES & APPLICATION
