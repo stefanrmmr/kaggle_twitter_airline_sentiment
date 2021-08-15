@@ -43,10 +43,11 @@ df_tweets['category'] = df_tweets['category'].map({'negative': -1.0, 'neutral': 
 df_tweets = df_tweets[['category', 'clean_text']]
 
 df_tweets.isnull().sum()                # Check for missing data
-df_tweets.dropna(axis=0, inplace=True)  # drop missing rows
+df_tweets.dropna(axis=0, inplace=True)  # Drop missing rows
 
 # Map tweet categories
-df_tweets['category'] = df_tweets['category'].map({-1.0: 'Negative', 0.0: 'Neutral', 1.0: 'Positive'})
+# df_tweets['category'] = df_tweets['category'].\
+#     map({-1.0: 'Negative', 0.0: 'Neutral', 1.0: 'Positive'})
 
 df_tweets.head(10)  # output first ten tweet df entries
 
@@ -199,4 +200,4 @@ model.save('best_model.h5')             # SAVE the best model
 model = load_model('best_model.h5')     # RELOAD the saved model
 
 # TODO test certain phrases to evaluate on the model performance
-predict_class("I've really enjoyed this flight to Cuba however the food was unsatisfying.")
+predict_class("I've really enjoyed this flight to Cuba, however the food was unsatisfying.")
