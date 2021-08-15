@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_extraction.text import CountVectorizer
 
-import tensorflow as tf
+# import tensorflow as tf
 import keras.backend as k
 
 from keras.models import load_model
@@ -23,24 +23,22 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
 from keras.layers import Embedding, Conv1D, MaxPooling1D, Bidirectional, LSTM, Dense, Dropout
 from keras.metrics import Precision, Recall
-from keras.optimizers import SGD
+
+from tensorflow.keras.optimizers import SGD
 
 nltk.download("stopwords")
 pd.options.plotting.backend = "plotly"
-
 
 # Load Tweet dataset
 df_tweets = pd.read_csv('/tweets_data/Tweets.csv')
 df_tweets = df_tweets.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
 df_tweets['category'] = df_tweets['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
 df_tweets = df_tweets[['category', 'clean_text']]
+
 # Output first five rows
 df_tweets.head()
-
-
 # Check for missing data
 df_tweets.isnull().sum()
-
 # drop missing rows
 df_tweets.dropna(axis=0, inplace=True)
 
@@ -73,7 +71,6 @@ print("\nProcessed tweet ->", tweet_to_words(df_tweets['clean_text'][0]))
 # Apply data processing to each tweet
 X = list(map(tweet_to_words, df_tweets['clean_text']))
 
-
 # Encode target labels
 le = LabelEncoder()
 Y = le.fit_transform(df_tweets['category'])
@@ -96,7 +93,6 @@ count_vector = CountVectorizer(max_features=vocabulary_size,
 X_train = count_vector.fit_transform(X_train).toarray()
 # Transform testing data
 X_test = count_vector.transform(X_test).toarray()
-
 
 max_words = 5000
 max_len = 50
@@ -132,12 +128,6 @@ with open('tokenizer.pickle', 'rb') as handle:
 
 y = pd.get_dummies(df_tweets['category'])
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=1)
-print('Train Set ->', X_train.shape, y_train.shape)
-print('Validation Set ->', X_val.shape, y_val.shape)
-print('Test Set ->', X_test.shape, y_test.shape)
-
 
 def f1_score(precision_val, recall_val):
     f1_val = 2 * (precision_val * recall_val) / (precision_val + recall_val + k.epsilon())
@@ -162,11 +152,9 @@ model.add(Bidirectional(LSTM(32)))
 model.add(Dropout(0.4))
 model.add(Dense(3, activation='softmax'))
 
-# OUTPUT model information
-tf.keras.utils.plot_model(model, show_shapes=True)
-print(model.summary())
+# tf.keras.utils.plot_model(model, show_shapes=True)
+print(model.summary())  # OUTPUT model information
 
-# Compile model
 model.compile(loss='categorical_crossentropy', optimizer=sgd,
               metrics=['accuracy', Precision(), Recall()])
 
