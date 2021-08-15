@@ -5,7 +5,7 @@ summer semester 2021, development of a tweet text sentiment analysis model using
 
 DATASET & SOURCES
  
-  - Kaggle Twitter US Airline Sentiment, February 2015
+  - Kaggle Twitter US Airline Sentiment tweets from February 2015
   - https://www.kaggle.com/crowdflower/twitter-airline-sentiment
  
 IMPLEMENTATION & METRICS
