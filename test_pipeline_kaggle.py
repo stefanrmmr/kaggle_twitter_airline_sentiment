@@ -27,9 +27,6 @@ from plotting_framework import *
 workdir = os.path.dirname(__file__)
 sys.path.append(workdir)  # append path of project folder directory
 
-# nltk.download("stopwords")
-pd.options.plotting.backend = "plotly"  # TODO wtf is this?
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # TODO wtf but necessary for tensorflow to work
 
 
@@ -38,12 +35,12 @@ max_len = 50
 vocabulary_size = 5000  # HYPER PARAMETER  # TODO SWEEP this!!
 
 # DEFINE MODEL CHARACTERISTICS
-embedding_size = 32
-epochs = 20
-learning_rate = 0.1
+embedding_size = 64     # HYPER PARAMETER  # TODO SWEEP this!!
+epochs = 30             # HYPER PARAMETER  # TODO SWEEP this!!
+learning_rate = 0.1     # HYPER PARAMETER  # TODO SWEEP this!!
+momentum = 0.8          # HYPER PARAMETER  # TODO SWEEP this!!
+batch_size = 32         # HYPER PARAMETER  # TODO SWEEP this!!
 decay_rate = learning_rate / epochs
-momentum = 0.8
-batch_size = 64  # TRAINING of the Model
 
 print("\n\n_______DSML_Twitter_Sentiment________\n\n")
 
@@ -141,21 +138,18 @@ count_vector = CountVectorizer(max_features=vocabulary_size,
 X_test = count_vector.transform(X_test).toarray()        # NORMALIZATION Transform testing data"""
 
 
-# print('Before Tokenization & Padding \n', df_tweets['clean_text'][0])
-
 X, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'])
 
-# print('After Tokenization & Padding \n', X[0])
-
-with open('tokenizer.pickle', 'wb') as handle:  # saving
+with open('tokenizer.pickle', 'wb') as handle:  # save tokenizer
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open('tokenizer.pickle', 'rb') as handle:  # loading
+with open('tokenizer.pickle', 'rb') as handle:  # load tokenizer
     tokenizer = pickle.load(handle)
 
 y = pd.get_dummies(df_tweets['category'])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=1)
+# TRAIN VALIDATION SPLIT (60% train, 20% valid, 20% test)
 print('Train Set ->', X_train.shape, y_train.shape)
 print('Validation Set ->', X_val.shape, y_val.shape)
 print('Test Set ->', X_test.shape, y_test.shape)

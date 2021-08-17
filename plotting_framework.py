@@ -18,6 +18,7 @@ height = width / 1.618
 resolution = 500
 accent_color = '#808000'
 
+# pd.options.plotting.backend = "plotly"  # TODO wtf is this?
 
 def get_continuous_cmap(hex_list, float_list=None):
     # creates and returns a color map that can be used in heat map figures.
