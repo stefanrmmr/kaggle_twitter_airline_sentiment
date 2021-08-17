@@ -62,7 +62,7 @@ def plot_training_hist(history_import, epochs_count):
     # Top plot: model ACCURACY
     ax[0].plot(history_import.history['accuracy'], color="darkslategrey")
     ax[0].plot(history_import.history['val_accuracy'], color=accent_color)
-    ax[0].set_xlabel('completed training epochs')
+    # ax[0].set_xlabel('completed training epochs')
     ax[0].set_ylabel('model accuracy')
     ax[0].set_ylim(0.5, 1)
     ticks_loc = ax[0].get_xticks().tolist()
@@ -102,7 +102,7 @@ def plot_confusion_matrix(model, X_test, y_test):
     cm = confusion_matrix(np.argmax(np.array(y_test), axis=1), np.argmax(y_pred, axis=1))
     # plot confusion matrix
     plt.figure(figsize=(width, height), dpi=resolution)
-    sns.heatmap(cm, cmap=get_continuous_cmap(['#ffffff', accent_color]),
+    sns.heatmap(cm, cmap=get_continuous_cmap(['#ffffff', accent_color, accent_color]),
                 annot=True, fmt='d', linewidths=1, linecolor='black',
                 xticklabels=sentiment_classes,
                 yticklabels=sentiment_classes)
