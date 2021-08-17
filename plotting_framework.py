@@ -1,4 +1,5 @@
 # PLOTTING FRAMEWORK containing all visualizations presented in the final report
+
 import os
 import sys
 import seaborn as sns
@@ -107,10 +108,11 @@ def plot_confusion_matrix(model, X_test, y_test):
                 annot=True, fmt='d', linewidths=1, linecolor='black',
                 xticklabels=sentiment_classes,
                 yticklabels=sentiment_classes)
+
     plt.xlabel('Actual label')
     plt.ylabel('Predicted label')
 
     plt.tight_layout()
     time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
-    plt.savefig(f"{workdir}/analysis_plots/confusion_matrix_{time_of_analysis}.png")
+    plt.savefig(f"{workdir}/analysis_plots/confusion_matrix_testset{time_of_analysis}.png")
     plt.show()
