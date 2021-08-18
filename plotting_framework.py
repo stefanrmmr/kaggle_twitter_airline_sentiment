@@ -104,7 +104,7 @@ def plot_confusion_matrix(model, X_test, y_test):
     cm = confusion_matrix(np.argmax(np.array(y_test), axis=1), np.argmax(y_pred, axis=1))
     # plot confusion matrix
     plt.figure(figsize=(width, height), dpi=resolution)
-    sns.heatmap(cm, cmap=get_continuous_cmap(['#ffffff', accent_color, accent_color]),
+    sns.heatmap(cm, cmap=get_continuous_cmap(['#ffffff', accent_color]),
                 annot=True, fmt='d', linewidths=1, linecolor='black',
                 xticklabels=sentiment_classes,
                 yticklabels=sentiment_classes)

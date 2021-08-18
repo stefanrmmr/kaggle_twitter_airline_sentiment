@@ -2,6 +2,7 @@
 # Adrian Brünger, Stefan Rummer, TUM, summer 2021
 
 import nltk
+# import emoji
 import pickle
 import pandas as pd
 
@@ -15,15 +16,15 @@ from sklearn.feature_extraction.text import CountVectorizer
 import keras.backend as k
 from keras.models import load_model
 from keras.models import Sequential
-from keras.callbacks import EarlyStopping
 from keras.metrics import Precision, Recall
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Embedding, Conv1D, MaxPooling1D
 from keras.layers import Bidirectional, LSTM, Dense, Dropout
 
+
 import tensorflow as tf
-from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.optimizers import SGD, RMSprop, Adam
 
 from plotting_framework import *
 
@@ -37,28 +38,29 @@ sys.path.append(workdir)  # append path of project folder directory
 
 # DEFINE MODEL CHARACTERISTICS
 vocabulary_size = 5000  # TODO HYPER PARAMETER
-embedding_size = 64     # TODO HYPER PARAMETER
-epochs = 30             # TODO HYPER PARAMETER
-learning_rate = 0.1     # TODO HYPER PARAMETER
-momentum = 0.8          # TODO HYPER PARAMETER
-batch_size = 32         # TODO HYPER PARAMETER
+embedding_size = 32     # TODO HYPER PARAMETER
+epochs = 15             # TODO HYPER PARAMETER
+learning_rate = 0.001    # TODO HYPER PARAMETER
+momentum = 0.0          # TODO HYPER PARAMETER
+batch_size = 64         # TODO HYPER PARAMETER
 
 
 def tweet_to_words(tweet):
 
     text = tweet.lower()                            # lower case
+    # text = emoji.demojize(text)                   # translate emojis  # TODO emoji replacement, ANACONDA error?
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"#", "", text)                   # text remove hashtag symbol
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
+    text = re.sub(r"'", '', text)                   # remove apostrophes
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
     text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
 
     words = text.split()        # tokenize
 
-    # TODO STOPWORDS change this to exclude words from a whitelist (no, not, doesnt, etc...)
-    # words = [w for w in words if w not in stopwords.words("english")]
     # TODO STEMMER maybe apply stemming to split into word stems (generalization)
     # words = [PorterStemmer().stem(w) for w in words]
+
     return words
 
 
@@ -67,14 +69,14 @@ def tokenize_pad_sequences(text):
     # This function tokenize the input text into sequences of integers
     # and then pads each sequence to the same length
 
-    # Text tokenization
+    # Text tokenization with max amount of vocab_size word token ids
     tokenizer_padseq = Tokenizer(num_words=vocabulary_size, lower=True, split=' ')
     tokenizer_padseq.fit_on_texts(text)
     # Transforms text to a sequence of integers
     output = tokenizer_padseq.texts_to_sequences(text)
     # Pad sequences to the same length
-    output = pad_sequences(output, padding='post', maxlen=max_len)
-    # return sequences
+    output = pad_sequences(output, padding='post', maxlen=max_len, truncating='post')
+
     return output, tokenizer_padseq
 
 
@@ -86,10 +88,13 @@ def f1_score(precision_val, recall_val):
 def predict_class(text):
     # Function to predict sentiment class of the passed text
 
+    with open(r'model_data\tokenizer_save.pickle', 'rb') as handle_import:
+        tokenizer_import = pickle.load(handle_import)  # load tokenizer
+
     sentiment_classes = ['Negative', 'Neutral', 'Positive']
 
     # Transforms text to a sequence of integers using a tokenizer object
-    xt = tokenizer.texts_to_sequences(text)
+    xt = tokenizer_import.texts_to_sequences(text)
     # Pad sequences to the same length
     xt = pad_sequences(xt, padding='post', maxlen=max_len)
     # Do the prediction using the loaded model
@@ -100,38 +105,31 @@ def predict_class(text):
 
 print("\n_______DAML_Twitter_Sentiment________\n")
 
-df_tweets = pd.read_csv('tweets_data/Tweets.csv')
-print(df_tweets.info())
-df_tweets = df_tweets.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
-df_tweets['category'] = df_tweets['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
-df_tweets = df_tweets[['category', 'clean_text', 'airline']]
+
+# IMPORT DATA TWEETS: Airlines
+df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
+print(df_tweets_air_full.info())
+df_tweets_air = df_tweets_air_full.copy()
+df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
+df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
+df_tweets_air = df_tweets_air[['category', 'clean_text']]
+# IMPORT DATA TWEETS: General
+df_tweets_gen = pd.read_csv('tweets_data/Tweets_general.csv')
+df_tweets_gen = df_tweets_gen[['category', 'clean_text']]
+# COMBINE DATASETS
+df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
 
 df_tweets.isnull().sum()                # Check for missing data
 df_tweets.dropna(axis=0, inplace=True)  # Drop missing rows
 print(df_tweets.head(10))  # output first ten tweet df entries
 
 # Apply data processing to each tweet
-X_tweets = list(map(tweet_to_words, df_tweets['clean_text']))
+X_tweets_list = list(map(tweet_to_words, df_tweets['clean_text']))
 
 # DYNAMICALLY change the max_len parameter
-max_len = 0
-for entry in X_tweets:
-    if len(entry) > max_len:
-        max_len = len(entry)
-max_len = int(max_len * 1.1)
-# add 10% extra to accommodate deviations
+max_len = max([len(x) for x in X_tweets_list])
 print(f"\nMax number of words expected"
       f" in a processed tweet: {max_len} \n")
-
-
-
-
-
-
-# TODO TURN categories into one hot encoding?
-# TODO tokenisation and padding (each word becomes a special id)
-# TODO process only the top 5000 words (vocab_size)
-# TODO pad the sequences to have the same length
 
 # this results in having a database where each entry in a sequence can be one of 5000 values (words)
 # TODO reduce this dimension to a lower dimension
@@ -144,50 +142,18 @@ print(f"\nMax number of words expected"
 # embedding layer in keras
 
 
-
-
-# Encode target labels
-label_encoder = LabelEncoder()
-Y = label_encoder.fit_transform(df_tweets['category'])
-
-
-
-
-"""y = pd.get_dummies(df_tweets['category'])
-# TRAIN TEST SPLIT (80% train, 20% test)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
-# TRAIN VALIDATION SPLIT (60% train, 20% valid, 20% test)
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=1)"""
-
-# TODO wtf does this do?
-# Tweets have already been preprocessed hence dummy function will be passed in
-count_vector = CountVectorizer(max_features=vocabulary_size,
-                               preprocessor=lambda x: x,
-                               tokenizer=lambda x: x)
-
-
-"""X_train = count_vector.fit_transform(X_train).toarray()  # NORMALIZATION Fit the training data
-X_test = count_vector.transform(X_test).toarray()        # NORMALIZATION Transform testing data"""
-
-
-X_tweets, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'])
+# TOKENIZE and PAD the list of word arrays
+X_tweets_list, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'])
 
 with open(r'model_data\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
-with open(r'model_data\tokenizer_save.pickle', 'rb') as handle:  # load tokenizer
-    tokenizer = pickle.load(handle)
 
+# TARGET vector ONE HOT ENCODING (3dummy variables)
 y_categories = pd.get_dummies(df_tweets['category'])
-
-
-
-
-
-
 
 # TRAIN VALIDATION SPLIT (60% train, 20% valid, 20% test)
 X_train, X_test, y_train, y_test = \
-    train_test_split(X_tweets, y_categories, test_size=0.2, random_state=1)
+    train_test_split(X_tweets_list, y_categories, test_size=0.2, random_state=1)
 X_train, X_val, y_train, y_val = \
     train_test_split(X_train, y_train, test_size=0.25, random_state=1)
 print(f"SHAPE X_train: {X_train.shape}")
@@ -201,19 +167,26 @@ print(f"SHAPE Y_test : {y_test.shape}\n")
 sgd = SGD(lr=learning_rate, momentum=momentum,
           decay=(learning_rate/epochs), nesterov=False)
 
-# BUILD the model
+rmsprop = RMSprop(learning_rate=learning_rate, rho=0.9, momentum=momentum,
+                            epsilon=1e-07, centered=True)
+
+adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
+
+# BUILD the model  #v TODO how should the optimal model be configured
+# TODO hyperparameter tuning using keras ?
+
 model = Sequential()
-model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len))
-model.add(Conv1D(filters=32, kernel_size=3, padding='same', activation='relu'))
-model.add(MaxPooling1D(pool_size=2))
-model.add(Bidirectional(LSTM(32)))
-model.add(Dropout(0.4))
+model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
+# model.add(Conv1D(filters=32, kernel_size=3, padding='same', activation='relu'))
+# model.add(MaxPooling1D(pool_size=2))
+model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))  #
+# model.add(Dropout(0.4))
 model.add(Dense(3, activation='softmax'))
 
 # tf.keras.utils.plot_model(model, show_shapes=True)
 print(model.summary())  # OUTPUT model information
 
-model.compile(loss='categorical_crossentropy', optimizer=sgd,
+model.compile(loss='categorical_crossentropy', optimizer=adam,
               metrics=['accuracy', Precision(), Recall()])
 
 # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
@@ -221,7 +194,7 @@ model.compile(loss='categorical_crossentropy', optimizer=sgd,
 # SAVE model weights at the end of every epoch, if these are the best so far
 checkpoint_filepath = r'model_data\best_model.hdf5'
 model_checkpoint_callback = tf.keras.callbacks.\
-    ModelCheckpoint(filepath=checkpoint_filepath, patience = 3, verbose=1,
+    ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
                     save_best_only=True, monitor='val_loss', mode='min')
 
 # apply model to training data and store history information
