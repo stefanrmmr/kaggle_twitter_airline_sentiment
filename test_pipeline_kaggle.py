@@ -22,7 +22,6 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Embedding, Conv1D, MaxPooling1D
 from keras.layers import Bidirectional, LSTM, Dense, Dropout
 
-
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, RMSprop, Adam
 
@@ -40,7 +39,7 @@ sys.path.append(workdir)  # append path of project folder directory
 vocabulary_size = 5000  # TODO HYPER PARAMETER
 embedding_size = 32     # TODO HYPER PARAMETER
 epochs = 15             # TODO HYPER PARAMETER
-learning_rate = 0.001    # TODO HYPER PARAMETER
+learning_rate = 0.001   # TODO HYPER PARAMETER
 momentum = 0.0          # TODO HYPER PARAMETER
 batch_size = 64         # TODO HYPER PARAMETER
 
