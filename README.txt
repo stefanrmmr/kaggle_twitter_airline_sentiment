@@ -8,8 +8,7 @@ DATASET & SOURCES
   - [Kaggle] Twitter US Airline Sentiment tweets from February 2015
     https://www.kaggle.com/crowdflower/twitter-airline-sentiment
   - [Kaggle] Twitter and Reddit Sentimental analysis Dataset
-    https://www.kaggle.com/cosmos98/twitter-and-reddit-sentimental
-    -analysis-dataset?select=Reddit_Data.csv
+    https://www.kaggle.com/cosmos98/twitter-and-reddit-sentimental-analysis-dataset?select=Reddit_Data.csv
  
 IMPLEMENTATION & METRICS
 
