@@ -1,17 +1,10 @@
-# Kaggle-Inspired PIPELINE for Sentiment Analysis
+# FINAL MODEL for Twitter tweet text sentiment analysis
 # Adrian Brünger, Stefan Rummer, TUM, summer 2021
 
-import nltk
-# import emoji
 import pickle
 import pandas as pd
-
 from nltk.stem.porter import *
-from nltk.corpus import stopwords
-
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer
 
 import keras.backend as k
 from keras.models import load_model
@@ -34,7 +27,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 workdir = os.path.dirname(__file__)
 sys.path.append(workdir)  # append path of project folder directory
 
-
 # DEFINE MODEL CHARACTERISTICS
 vocabulary_size = 5000  # TODO HYPER PARAMETER
 embedding_size = 32     # TODO HYPER PARAMETER
@@ -47,7 +39,6 @@ batch_size = 32         # TODO HYPER PARAMETER
 def tweet_to_words(tweet):
 
     text = tweet.lower()                            # lower case
-    # text = emoji.demojize(text)                   # translate emojis  # TODO emoji replacement, ANACONDA error?
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"#", "", text)                   # text remove hashtag symbol
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
@@ -55,7 +46,7 @@ def tweet_to_words(tweet):
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
     text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
 
-    words = text.split()        # tokenize
+    words = text.split()        # Tokenize
 
     # TODO STEMMER maybe apply stemming to split into word stems (generalization)
     # words = [PorterStemmer().stem(w) for w in words]
@@ -65,9 +56,7 @@ def tweet_to_words(tweet):
 
 def tokenize_pad_sequences(text):
 
-    # This function tokenize the input text into sequences of integers
-    # and then pads each sequence to the same length
-
+    # This function tokenize the input text into sequences of integers and pads each sequence
     # Text tokenization with max amount of vocab_size word token ids
     tokenizer_padseq = Tokenizer(num_words=vocabulary_size, lower=True, split=' ')
     tokenizer_padseq.fit_on_texts(text)
@@ -85,7 +74,6 @@ def f1_score(precision_val, recall_val):
 
 
 def predict_class(text):
-    # Function to predict sentiment class of the passed text
 
     with open(r'model_data\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
@@ -133,17 +121,6 @@ max_len = max([len(x) for x in X_tweets_list])
 print(f"\nMax number of words expected"
       f" in a processed tweet: {max_len} \n")
 
-# this results in having a database where each entry in a sequence can be one of 5000 values (words)
-# TODO reduce this dimension to a lower dimension
-# the length of the padded list does not change, but the dimensionality of each entry does
-# this dimension reduction also bares information on which words are related
-
-# TODO processes used to achieve this form of vectorization/dim reduction
-# glove?
-# word2vec
-# embedding layer in keras
-
-
 # TOKENIZE and PAD the list of word arrays
 X_tweets_list, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'])
 
@@ -166,16 +143,13 @@ print(f"SHAPE Y_valid: {y_val.shape}")
 print(f"SHAPE Y_test : {y_test.shape}\n")
 
 # OPTIMIZERS
-sgd = SGD(lr=learning_rate, momentum=momentum,
+"""sgd = SGD(lr=learning_rate, momentum=momentum,
           decay=(learning_rate/epochs), nesterov=False)
 
 rmsprop = RMSprop(learning_rate=learning_rate, rho=0.9, momentum=momentum,
-                            epsilon=1e-07, centered=True)
+                            epsilon=1e-07, centered=True)"""
 
 adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
-
-# BUILD the model  #v TODO how should the optimal model be configured
-# TODO hyperparameter tuning using keras ?
 
 model = Sequential()
 model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
@@ -232,9 +206,3 @@ print("===================================================")
 
 # PLOT CONFUSION MATRIX for TEST Dataset
 plot_confusion_matrix(model, X_test, y_test)
-
-
-# TODO test certain phrases to evaluate on the model performance
-predict_class("I've really enjoyed this flight to Cuba.")
-predict_class("the flight was perfect ")
-predict_class("This journey was a pleasure!")
