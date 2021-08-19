@@ -31,9 +31,9 @@ sys.path.append(workdir)  # append path of project folder directory
 vocabulary_size = 5000  # TODO HYPER PARAMETER
 embedding_size = 32     # TODO HYPER PARAMETER
 epochs = 10             # TODO HYPER PARAMETER
-learning_rate = 0.001   # TODO HYPER PARAMETER
+learning_rate = 0.01    # TODO HYPER PARAMETER
 momentum = 0.0          # TODO HYPER PARAMETER
-batch_size = 32         # TODO HYPER PARAMETER
+batch_size = 128        # TODO HYPER PARAMETER
 
 
 def tweet_to_words(tweet):
@@ -106,7 +106,7 @@ df_tweets_air = df_tweets_air[['category', 'clean_text']]
 # IMPORT DATA TWEETS: General
 df_tweets_gen = pd.read_csv('tweets_data/Tweets_general.csv')
 df_tweets_gen = df_tweets_gen[['category', 'clean_text']]
-# COMBINE DATASETS
+# COMBINE DATASETS for large amount of data, increase accuracy
 df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
 
 df_tweets.isnull().sum()                # Check for missing data
