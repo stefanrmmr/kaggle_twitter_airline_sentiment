@@ -1,4 +1,4 @@
-# Kaggle-Inspired PIPELINE for Sentiment Analysis
+# FINAL MODEL for Twitter tweet text sentiment analysis
 # Adrian Brünger, Stefan Rummer, TUM, summer 2021
 
 import nltk
