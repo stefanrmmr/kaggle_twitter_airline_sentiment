@@ -38,10 +38,10 @@ sys.path.append(workdir)  # append path of project folder directory
 # DEFINE MODEL CHARACTERISTICS
 vocabulary_size = 5000  # TODO HYPER PARAMETER
 embedding_size = 32     # TODO HYPER PARAMETER
-epochs = 15             # TODO HYPER PARAMETER
+epochs = 10             # TODO HYPER PARAMETER
 learning_rate = 0.001   # TODO HYPER PARAMETER
 momentum = 0.0          # TODO HYPER PARAMETER
-batch_size = 64         # TODO HYPER PARAMETER
+batch_size = 32         # TODO HYPER PARAMETER
 
 
 def tweet_to_words(tweet):
@@ -89,6 +89,7 @@ def predict_class(text):
 
     with open(r'model_data\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
+        # always use the same tokenizer so that word tokens are not changed
 
     sentiment_classes = ['Negative', 'Neutral', 'Positive']
 
@@ -97,6 +98,8 @@ def predict_class(text):
     # Pad sequences to the same length
     xt = pad_sequences(xt, padding='post', maxlen=max_len)
     # Do the prediction using the loaded model
+    print(f"Sentiments: {model.predict(xt)}")
+
     yt = model.predict(xt).argmax(axis=1)
     # Print the predicted sentiment
     print('SENTIMENT prediction: ', sentiment_classes[yt[0]])
@@ -144,7 +147,7 @@ print(f"\nMax number of words expected"
 # TOKENIZE and PAD the list of word arrays
 X_tweets_list, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'])
 
-with open(r'model_data\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
+with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # TARGET vector ONE HOT ENCODING (3dummy variables)
@@ -191,7 +194,7 @@ model.compile(loss='categorical_crossentropy', optimizer=adam,
 # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
 # RESTORE the OPTIMAL NN WEIGHTS from when val_loss was minimal (epoch nr.)
 # SAVE model weights at the end of every epoch, if these are the best so far
-checkpoint_filepath = r'model_data\best_model.hdf5'
+checkpoint_filepath = r'model_data_keras_embedding\best_model.hdf5'
 model_checkpoint_callback = tf.keras.callbacks.\
     ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
                     save_best_only=True, monitor='val_loss', mode='min')
@@ -232,6 +235,6 @@ plot_confusion_matrix(model, X_test, y_test)
 
 
 # TODO test certain phrases to evaluate on the model performance
-# predict_class("I've really enjoyed this flight to Cuba.")
-# predict_class("the flight was perfect ")
-# predict_class("This journey was a pleasure!")
+predict_class("I've really enjoyed this flight to Cuba.")
+predict_class("the flight was perfect ")
+predict_class("This journey was a pleasure!")

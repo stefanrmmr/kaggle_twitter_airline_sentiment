@@ -162,6 +162,26 @@ if __name__ == "__main__":
     # text_data = get_text(twitter_data)
     text_data = twitter_data.loc[:, ["text", "airline_sentiment"]]
     print(text_data.head())
+
+    """# IMPORT DATA TWEETS: Airlines
+    df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
+    print(df_tweets_air_full.info())
+    df_tweets_air = df_tweets_air_full.copy()
+    df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
+    df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
+    df_tweets_air = df_tweets_air[['category', 'clean_text']]
+    df_tweets_air = df_tweets_air.head(1)
+    # IMPORT DATA TWEETS: General
+    df_tweets_gen = pd.read_csv('tweets_data/Tweets_general.csv')
+    df_tweets_gen = df_tweets_gen[['category', 'clean_text']]
+    df_tweets_gen = df_tweets_gen.head(15000)
+    # COMBINE DATASETS
+    df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
+    # df_tweets = df_tweets_air.copy()
+    df_tweets = df_tweets.sample(frac=1)  # shuffle dataframe"""
+
+
+
     print(text_data.isnull().sum())
     # drop rows/examples where either no text could be fetched or no sentiment was assigned
     text_data.dropna(axis=0, how="any", inplace=True)
@@ -193,8 +213,6 @@ if __name__ == "__main__":
     # save vocabulary
     vocab = tokenizer.sequences_to_texts([range(0, vocab_size+1)])[0].split()
     # print(vocab)
-
-
 
     # # III) Split data set into train and test set ###
     # ToDo: 1) set shuffle to True, 2) use of validation set (kaggle), 3) maybe shuffle rest aswell for visualizations
@@ -247,14 +265,6 @@ if __name__ == "__main__":
 
     # save vectors and words in .tsv files for later use and visualizations
     save_embeddings(embedding_matrix)
-
-
-
-
-
-
-
-
 
     # LSTM MODEL
     model = Sequential()

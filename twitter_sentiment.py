@@ -1,26 +1,28 @@
 # FINAL MODEL for Twitter tweet text sentiment analysis
 # Adrian Brünger, Stefan Rummer, TUM, summer 2021
 
-import nltk
-# import emoji
 import pickle
 import pandas as pd
+import datetime
 
 from nltk.stem.porter import *
-from nltk.corpus import stopwords
 
-from sklearn.preprocessing import LabelEncoder
+# from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer
+# from sklearn.feature_extraction.text import CountVectorizer
 
 import keras.backend as k
+# from keras.preprocessing.sequence import skipgrams
+from keras.layers.core import Reshape
+from keras.layers import dot
 from keras.models import load_model
 from keras.models import Sequential
-from keras.metrics import Precision, Recall
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
+from keras import Model
+from keras.metrics import Precision, Recall
 from keras.layers import Embedding, Conv1D, MaxPooling1D
-from keras.layers import Bidirectional, LSTM, Dense, Dropout
+from keras.layers import Bidirectional, LSTM, Dense  # , Dropout
 
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, RMSprop, Adam
@@ -34,20 +36,22 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 workdir = os.path.dirname(__file__)
 sys.path.append(workdir)  # append path of project folder directory
 
-
 # DEFINE MODEL CHARACTERISTICS
 vocabulary_size = 5000  # TODO HYPER PARAMETER
 embedding_size = 32     # TODO HYPER PARAMETER
-epochs = 15             # TODO HYPER PARAMETER
+epochs = 30             # TODO HYPER PARAMETER
 learning_rate = 0.001   # TODO HYPER PARAMETER
 momentum = 0.0          # TODO HYPER PARAMETER
-batch_size = 64         # TODO HYPER PARAMETER
+batch_size = 128         # TODO HYPER PARAMETER
+
+num_ns = 4      # number of negative samples for embedding
+SEED = 42
 
 
 def tweet_to_words(tweet):
 
     text = tweet.lower()                            # lower case
-    # text = emoji.demojize(text)                   # translate emojis  # TODO emoji replacement, ANACONDA error?
+    # text = emoji.demojize(text)                   # translate emojis TODO emoji replacement
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"#", "", text)                   # text remove hashtag symbol
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
@@ -55,10 +59,8 @@ def tweet_to_words(tweet):
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
     text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
 
-    words = text.split()        # tokenize
-
-    # TODO STEMMER maybe apply stemming to split into word stems (generalization)
-    # words = [PorterStemmer().stem(w) for w in words]
+    # words = " ".join(text.split())  # for legibility, avoid having multiple spaces after another
+    words = text.split()
 
     return words
 
@@ -77,6 +79,64 @@ def tokenize_pad_sequences(text):
     output = pad_sequences(output, padding='post', maxlen=max_len, truncating='post')
 
     return output, tokenizer_padseq
+
+
+def generate_training_data(sequences, window_size, num_ns_, vocab_size_):
+    print("[VECTORIZATION] Generating training data ...")
+    # Elements of each training example are appended to these lists.
+    data_targets = np.empty((0, 1))
+    data_contexts = np.empty((0, num_ns_ + 1))
+    data_labels = np.empty((0, num_ns_ + 1))
+
+    # Build the sampling table for vocab_size tokens.
+    sampling_table = tf.keras.preprocessing.sequence.make_sampling_table(vocab_size_)
+
+    # Iterate over all sequences (sentences) in dataset.
+    seq_count = 1
+    for sequence in sequences:
+        sys.stdout.write(f"\rProcess sequence: {str(seq_count).zfill(5)}/{len(sequences)}")
+        sys.stdout.flush()
+        seq_count += 1
+        # Generate positive skip-gram pairs for a sequence (sentence).
+        positive_skip_grams, _ = tf.keras.preprocessing.sequence.skipgrams(sequence, vocabulary_size=vocab_size_,
+                                                                           sampling_table=sampling_table,
+                                                                           window_size=window_size, negative_samples=0)
+
+        # Iterate over each positive skip-gram pair to produce training examples
+        # with positive context word and negative samples.
+        for target_word, context_word in positive_skip_grams:
+            context_class = tf.expand_dims(tf.constant([context_word], dtype="int64"), 1)
+            neg_sampling_candidates, _, _ = tf.random.log_uniform_candidate_sampler(true_classes=context_class,
+                                                                                    num_true=1, num_sampled=num_ns_,
+                                                                                    unique=True,
+                                                                                    range_max=vocab_size_,
+                                                                                    seed=SEED,
+                                                                                    name="negative_sampling")
+
+            # Build context and label vectors (for one target word)
+            neg_sampling_candidates = tf.expand_dims(neg_sampling_candidates, 1)
+            context = tf.concat([context_class, neg_sampling_candidates], 0).numpy().reshape(1, 5)
+            label = tf.constant([1] + [0] * num_ns, dtype="int64").numpy()
+
+            # Append each element from the training example to global lists.
+            data_targets = np.vstack((data_targets, target_word))
+            data_contexts = np.vstack((data_contexts, context))
+            data_labels = np.vstack((data_labels, label))
+
+    return data_targets, data_contexts, data_labels
+
+
+def save_embeddings(embedding_matrix_import):
+    import io
+    out_v = io.open('vectors.tsv', 'w', encoding='utf-8')
+    out_m = io.open('metadata.tsv', 'w', encoding='utf-8')
+    for index, word in enumerate(vocab):
+        vec = embedding_matrix_import[index + 1, :]
+        out_v.write('\t'.join([str(x) for x in vec]) + "\n")
+        out_m.write(word + "\n")
+    out_v.close()
+    out_m.close()
+    return None
 
 
 def f1_score(precision_val, recall_val):
@@ -112,11 +172,17 @@ df_tweets_air = df_tweets_air_full.copy()
 df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
 df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
 df_tweets_air = df_tweets_air[['category', 'clean_text']]
+# df_tweets_air = df_tweets_air.head(10000)  # TODO custom
 # IMPORT DATA TWEETS: General
 df_tweets_gen = pd.read_csv('tweets_data/Tweets_general.csv')
 df_tweets_gen = df_tweets_gen[['category', 'clean_text']]
+df_tweets_gen = df_tweets_gen.head(15000)  # TODO custom
 # COMBINE DATASETS
 df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
+# df_tweets = df_tweets_air.copy()
+df_tweets = df_tweets.sample(frac=1)  # shuffle dataframe
+
+# df_tweets = df_tweets.head(20000)  # TODO select to 10k rows (~10%)
 
 df_tweets.isnull().sum()                # Check for missing data
 df_tweets.dropna(axis=0, inplace=True)  # Drop missing rows
@@ -130,22 +196,13 @@ max_len = max([len(x) for x in X_tweets_list])
 print(f"\nMax number of words expected"
       f" in a processed tweet: {max_len} \n")
 
-# this results in having a database where each entry in a sequence can be one of 5000 values (words)
-# TODO reduce this dimension to a lower dimension
-# the length of the padded list does not change, but the dimensionality of each entry does
-# this dimension reduction also bares information on which words are related
-
-# TODO processes used to achieve this form of vectorization/dim reduction
-# glove?
-# word2vec
-# embedding layer in keras
-
-
 # TOKENIZE and PAD the list of word arrays
 X_tweets_list, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'])
 
 with open(r'model_data\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+vocab = tokenizer.sequences_to_texts([range(0, vocabulary_size+1)])[0].split()
 
 # TARGET vector ONE HOT ENCODING (3dummy variables)
 y_categories = pd.get_dummies(df_tweets['category'])
@@ -162,20 +219,60 @@ print(f"SHAPE Y_train: {y_train.shape}")
 print(f"SHAPE Y_valid: {y_val.shape}")
 print(f"SHAPE Y_test : {y_test.shape}\n")
 
+"""# WORD EMBEDDINGS (Word2Vec)
+# # Skip-Gram and Negative-Sampling
+pos_skip_gram, _ = skipgrams(X_tp[3], vocabulary_size=vocabulary_size, window_size=2, negative_samples=0)
+# ToDo: Def vocabulary size
+# "window_size = n" means 2*n + 1 words are in the whole window 
+# "negative_samples = 0" means that all context words are in the same window
+# as the sampled word/target word (no random samples for context words)
+print(tokenizer.sequences_to_texts(pos_skip_gram[:5]))
+"""
+
+
+targets, contexts, labels = generate_training_data(sequences=X_train[:, :], window_size=2, num_ns_=num_ns,
+                                                   vocab_size_=vocabulary_size)
+target_model = Sequential()
+target_model.add(Embedding(vocabulary_size, embedding_size, embeddings_initializer="glorot_uniform",
+                           input_length=1))
+target_model.add(Reshape((embedding_size,)))
+
+context_model = Sequential()
+context_model.add(Embedding(vocabulary_size, embedding_size, embeddings_initializer="glorot_uniform",
+                            input_length=num_ns + 1))
+context_model.add(Reshape((num_ns + 1, embedding_size)))
+
+dot_product = dot([target_model.output, context_model.output], axes=(1, 2), normalize=False)
+
+model_embed = Model(inputs=[target_model.input, context_model.input], outputs=dot_product)
+# compile embeddings training model
+model_embed.compile(loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+                    optimizer="adam", metrics="accuracy")
+print("\nEMBEDDING MODEL TRAINING:")
+print(model_embed.summary())
+# fit model to Skip-Grams (target words and contexts)
+model_embed.fit(x=[targets, contexts], y=labels, epochs=20, verbose=1, validation_split = 0.2)
+
+embedding_matrix = target_model.get_weights()[0]  # lookup table for embeddings # TODO? Warum von target
+print(embedding_matrix.shape)
+print(embedding_matrix[0:5])
+# save vectors and words in .tsv files for later use and visualizations
+save_embeddings(embedding_matrix)
+
+
 # OPTIMIZERS
-sgd = SGD(lr=learning_rate, momentum=momentum,
+"""sgd = SGD(lr=learning_rate, momentum=momentum,
           decay=(learning_rate/epochs), nesterov=False)
 
 rmsprop = RMSprop(learning_rate=learning_rate, rho=0.9, momentum=momentum,
-                            epsilon=1e-07, centered=True)
+                  epsilon=1e-07, centered=True)"""
 
 adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
 
-# BUILD the model  #v TODO how should the optimal model be configured
-# TODO hyperparameter tuning using keras ?
-
+# BUILD KERAS MODEL PIPELINE
 model = Sequential()
-model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
+model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len,
+                    trainable=True))
 # model.add(Conv1D(filters=32, kernel_size=3, padding='same', activation='relu'))
 # model.add(MaxPooling1D(pool_size=2))
 model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))  #
@@ -191,7 +288,8 @@ model.compile(loss='categorical_crossentropy', optimizer=adam,
 # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
 # RESTORE the OPTIMAL NN WEIGHTS from when val_loss was minimal (epoch nr.)
 # SAVE model weights at the end of every epoch, if these are the best so far
-checkpoint_filepath = r'model_data\best_model.hdf5'
+time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+checkpoint_filepath = rf'model_data_custom_embedding\best_model_testrun_{time_of_analysis}.hdf5'
 model_checkpoint_callback = tf.keras.callbacks.\
     ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
                     save_best_only=True, monitor='val_loss', mode='min')
@@ -199,7 +297,7 @@ model_checkpoint_callback = tf.keras.callbacks.\
 # apply model to training data and store history information
 history = model.fit(X_train, y_train, validation_data=(X_val, y_val),
                     batch_size=batch_size, epochs=epochs, verbose=1,
-                    callbacks=[model_checkpoint_callback])
+                    callbacks=[model_checkpoint_callback], weights=[embedding_matrix])
 
 # PLOT ACCURACY and LOSS evolution
 plot_training_hist(history, epochs)
