@@ -12,11 +12,11 @@ from keras.models import Sequential
 from keras.metrics import Precision, Recall
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-from keras.layers import Embedding, Conv1D, MaxPooling1D
-from keras.layers import Bidirectional, LSTM, Dense, Dropout
+from keras.layers import Embedding  # Conv1D, MaxPooling1D
+from keras.layers import Bidirectional, LSTM, Dense  # Dropout
 
 import tensorflow as tf
-from tensorflow.keras.optimizers import SGD, RMSprop, Adam
+from tensorflow.keras.optimizers import Adam  # SGD, RMSprop
 
 from plotting_framework import *
 
@@ -28,12 +28,12 @@ workdir = os.path.dirname(__file__)
 sys.path.append(workdir)  # append path of project folder directory
 
 # DEFINE MODEL CHARACTERISTICS
-vocabulary_size = 5000  # TODO HYPER PARAMETER
-embedding_size = 32     # TODO HYPER PARAMETER
-epochs = 10             # TODO HYPER PARAMETER
-learning_rate = 0.01    # TODO HYPER PARAMETER
-momentum = 0.0          # TODO HYPER PARAMETER
-batch_size = 128        # TODO HYPER PARAMETER
+vocabulary_size = 5000   # TODO HYPER PARAMETER
+embedding_size = 32      # TODO HYPER PARAMETER
+epochs = 20              # TODO HYPER PARAMETER
+learning_rate = 0.0001  # TODO HYPER PARAMETER
+momentum = 0.0           # TODO HYPER PARAMETER
+batch_size = 164         # TODO HYPER PARAMETER
 
 
 def tweet_to_words(tweet):
