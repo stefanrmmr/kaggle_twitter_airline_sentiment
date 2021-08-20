@@ -54,12 +54,12 @@ def clean_tweet(tweet):
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters ###################### exclude numbers, in general: how to handle shorts (you've)
     #text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
     text = " ".join(text.split()) # for legibility, avoid having multiple spaces after another
-    #words = text.split()
+    words = text.split()
     # remove stopwords
-    #words = [w for w in words if w not in stopwords.words("english")]
+    words = [w for w in words if w not in stopwords.words("english")]
     # apply stemming
     #words = [PorterStemmer().stem(w) for w in words]
-    #text = " ".join(words)
+    text = " ".join(words)
     # return list
     return text
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     print(labels[0])
 
     # model
-    embed_size = 64
+    embed_size = 128
     target_model = Sequential() 
     target_model.add(Embedding(vocab_size, embed_size, embeddings_initializer="glorot_uniform", input_length=1)) 
     target_model.add(Reshape((embed_size, ))) 
