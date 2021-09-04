@@ -1,5 +1,5 @@
 # USECASE: use twitter API to find most recent relevant tweets for an airline and analyse their average sentiment
-# Adrian Brünger, Stefan Rummer, TUM, summer 2021
+# Adrian Brünger, Stefan Rummer, TUM, Python Data Analysis for Engineers, summer 2021
 
 from datetime import timedelta
 from icecream import ic
@@ -13,6 +13,8 @@ from keras.models import load_model
 from keras.preprocessing.sequence import pad_sequences
 
 from plotting_framework import *
+from tweet_sentiment_lstm_keras import tweet_cleanup
+# from tweet_sentiment_lstm_keras import predict_class
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # for TensorFlow to work without any interruptions,
@@ -38,6 +40,7 @@ twitter_api = tweepy.API(auth, wait_on_rate_limit=True)
 
 max_len = 52  # model specific parameter, result of fundamental data analysis
 # maximal amount of words in a tweet
+
 checkpoint_filepath = r'model_data_keras_embedding\best_model.hdf5'
 # The model weights (that are considered the best) are loaded into the model.
 model = load_model(checkpoint_filepath)
@@ -47,8 +50,10 @@ with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'rb') as handle_i
     # always use the same tokenizer so that word tokens are not changed
 
 
-def predict_class(text):
+def predict_class(tweet):
 
+    # apply tweet cleanup function
+    text = tweet_cleanup(tweet)
 
     sentiment_classes = ['Negative', 'Neutral', 'Positive']
     # Transforms text to a sequence of integers using a tokenizer object
@@ -91,15 +96,10 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
         tweet_retweets = tweet.retweet_count
 
         tweet_text = tweet.full_text.replace("\n", " ")         # text remove line breaks
-        tweet_text = re.sub(r"http\S+", "", tweet_text)         # text remove hyperlinks
-        tweet_text = re.sub(r'#', '', tweet_text)               # text remove hashtag symbol
-        tweet_text = re.sub(r"@\S+", "", tweet_text)            # text remove @mentions
-        tweet_text = re.sub(r'^RT[\s]+', '', tweet_text)        # remove retweet text "RT"
-        tweet_text = tweet_text.lower()                         # make all text lower case
-        tweet_text = emoji.demojize(tweet_text)                 # translate emojis
 
         # use the model trained to evaluate the tweet text, receive sentiment scores
         tweet_sent = predict_class(tweet_text)
+        print(tweet_sent)
         tweet_score_pos = float(tweet_sent[2])
         tweet_score_neg = float(tweet_sent[0])
         tweet_score_ntr = float(tweet_sent[1])
@@ -142,11 +142,11 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
                            f"first tweet {first_tweet_time}\n"
                            f"last tweet {last_tweet_time}\n"
                            f"search tag \"{twitter_tag}\"\n"
-                           f"{n_tweets_analyzed} analyzed tweets [finBERT]")
+                           f"{n_tweets_analyzed} analyzed tweets [keras-LSTM]")
 
     # output the resulting mean sentiment for the analysis
     print(f"\nTwitter Sentiment Analysis - MEAN Result: "
-          f"POS[{'{:0.4f}'.format(mean_sentiments[0])}],"
+          f" POS[{'{:0.4f}'.format(mean_sentiments[0])}],"
           f" NEG[{'{:0.4f}'.format(mean_sentiments[1])}],"
           f" NTR[{'{:0.4f}'.format(mean_sentiments[2])}]")
     print(f"For \"{issue_name}\" a total of [{n_tweets_analyzed}] tweets have been found and analyzed.")
@@ -155,11 +155,4 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
 
 
 # TODO test the script output for given input values
-# tweets_sentiment("Siemens Energy", "Siemens Energy", 100, "en", 1, "recent", True)
-#tweets_sentiment("$HIMS", "HIMS", 100, "en", 1, "recent", True)
-#tweets_sentiment("$BZN OR Baozun", "Baozun", 100, "en", 1, "recent", True)
-# tweets_sentiment("$TDOC OR Teladoc", "Teladoc", 250, "en", 1, "recent", True)
-# tweets_sentiment("@Siemens_Energy", "Siemens Energy", 100, "en", 1, "recent", True)
-# tweets_sentiment("rip", "rip", 50, "en", 1, "recent", True)
-# tweets_sentiment("$NLLSF OR NEL", "NEL", 250, "en", 2, "recent", True)
-tweets_sentiment("delta", "Delta Airlines", 100, "en", 1, "popular", True)
+tweets_sentiment("delta", "Delta Airlines", 5, "en", 1, "popular", True)

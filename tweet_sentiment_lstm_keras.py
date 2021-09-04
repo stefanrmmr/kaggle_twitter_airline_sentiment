@@ -2,6 +2,7 @@
 # Adrian Brünger, Stefan Rummer, TUM, summer 2021
 
 import pickle
+import emoji
 import pandas as pd
 from nltk.stem.porter import *
 from sklearn.model_selection import train_test_split
@@ -31,27 +32,24 @@ sys.path.append(workdir)  # append path of project folder directory
 vocabulary_size = 5000   # TODO HYPER PARAMETER
 embedding_size = 32      # TODO HYPER PARAMETER
 epochs = 20              # TODO HYPER PARAMETER
-learning_rate = 0.0001  # TODO HYPER PARAMETER
+learning_rate = 0.0003   # TODO HYPER PARAMETER
 momentum = 0.0           # TODO HYPER PARAMETER
 batch_size = 164         # TODO HYPER PARAMETER
 
 
-def tweet_to_words(tweet):
+def tweet_cleanup(tweet_import):
 
-    text = tweet.lower()                            # lower case
+    text = tweet_import.lower()                     # convert text lower case
+    text = emoji.demojize(text)                     # translate emojis into words
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"#", "", text)                   # text remove hashtag symbol
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
-    text = re.sub(r"'", '', text)                   # remove apostrophes
+    text = re.sub(r"'", "", text)                   # remove apostrophes
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
     text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
-
-    words = text.split()        # Tokenize
-
-    # TODO STEMMER maybe apply stemming to split into word stems (generalization)
-    # words = [PorterStemmer().stem(w) for w in words]
-
-    return words
+    text = text.lstrip()                            # remove space from the left
+    text = ' '.join(text.split())                   # remove multiple white space
+    return text
 
 
 def tokenize_pad_sequences(text):
@@ -68,19 +66,16 @@ def tokenize_pad_sequences(text):
     return output, tokenizer_padseq
 
 
-def f1_score(precision_val, recall_val):
-    f1_val = 2 * (precision_val * recall_val) / (precision_val + recall_val + k.epsilon())
-    return f1_val
+def predict_class(tweet_import):
 
-
-def predict_class(text):
+    # apply tweet cleanup function
+    text = tweet_cleanup(tweet_import)
 
     with open(r'model_data\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
         # always use the same tokenizer so that word tokens are not changed
 
     sentiment_classes = ['Negative', 'Neutral', 'Positive']
-
     # Transforms text to a sequence of integers using a tokenizer object
     xt = tokenizer_import.texts_to_sequences(text)
     # Pad sequences to the same length
@@ -91,6 +86,12 @@ def predict_class(text):
     yt = model.predict(xt).argmax(axis=1)
     # Print the predicted sentiment
     print('SENTIMENT prediction: ', sentiment_classes[yt[0]])
+    return model.predict(xt)
+
+
+def f1_score(precision_val, recall_val):
+    f1_val = 2 * (precision_val * recall_val) / (precision_val + recall_val + k.epsilon())
+    return f1_val
 
 
 print("\n_______DAML_Twitter_Sentiment________\n")
@@ -98,7 +99,7 @@ print("\n_______DAML_Twitter_Sentiment________\n")
 
 # IMPORT DATA TWEETS: Airlines
 df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
-print(df_tweets_air_full.info())
+print(df_tweets_air_full.info(), "\n")
 df_tweets_air = df_tweets_air_full.copy()
 df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
 df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
@@ -111,13 +112,19 @@ df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
 
 df_tweets.isnull().sum()                # Check for missing data
 df_tweets.dropna(axis=0, inplace=True)  # Drop missing rows
-print(df_tweets.head(10))  # output first ten tweet df entries
+print(df_tweets.head(10), "\n")         # output first ten tweet df entries
 
-# Apply data processing to each tweet
-X_tweets_list = list(map(tweet_to_words, df_tweets['clean_text']))
+# Apply data processing to each tweet in df_tweets['clean_text']
+seq_count = 1
+tweet_data_size = len(df_tweets['clean_text'])
+for index in range(tweet_data_size):
+    df_tweets.at[index, 'clean_text'] = tweet_cleanup(df_tweets.iloc[index]['clean_text'])
+    sys.stdout.write(f"\rPreprocessing tweet texts: {str(seq_count).zfill(6)}/{tweet_data_size}")
+    sys.stdout.flush()
+    seq_count += 1
 
 # DYNAMICALLY change the max_len parameter
-max_len = max([len(x) for x in X_tweets_list])
+max_len = max([len(tweet.split()) for tweet in df_tweets['clean_text']])
 print(f"\nMax number of words expected"
       f" in a processed tweet: {max_len} \n")
 
@@ -150,12 +157,13 @@ rmsprop = RMSprop(learning_rate=learning_rate, rho=0.9, momentum=momentum,
                             epsilon=1e-07, centered=True)"""
 
 adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
+# use standard settings for adam optimizer
 
 model = Sequential()
 model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
 # model.add(Conv1D(filters=32, kernel_size=3, padding='same', activation='relu'))
 # model.add(MaxPooling1D(pool_size=2))
-model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))  #
+model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))
 # model.add(Dropout(0.4))
 model.add(Dense(3, activation='softmax'))
 
