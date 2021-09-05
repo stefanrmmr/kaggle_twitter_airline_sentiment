@@ -114,7 +114,7 @@ def predict_sentiment(text_input):
     with open(r'model_data_final\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
 
-    text_list = [text_input]  # Transforms text to a sequence of integers
+    text_list = [tweet_cleanup(text_input)]  # Transforms text to a sequence of integers
     sequence = tokenizer_import.texts_to_sequences(text_list)  # [[3, 157, 24, 201, 7, 156]] SHAPE
     sequence = sequence[0]                                     # [3, 157, 24, 201, 7, 156]   SHAPE
 
@@ -140,14 +140,15 @@ print("\n_______DAML_Twitter_Sentiment________\n")
 # IMPORT DATA TWEETS: Airlines
 df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
 print(df_tweets_air_full.info(), "\n")
+
 df_tweets_air = df_tweets_air_full.copy()
 df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
 df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
 df_tweets_air = df_tweets_air[['category', 'clean_text']]
-# IMPORT DATA TWEETS: General
+"""# IMPORT DATA TWEETS: General
 df_tweets_gen = pd.read_csv('tweets_data/Tweets_general.csv')
 df_tweets_gen = df_tweets_gen[['category', 'clean_text']]
-# COMBINE DATASETS for large amount of data, increase accuracy
+# COMBINE DATASETS for large amount of data, increase accuracy"""
 
 df_tweets = df_tweets_air
 # df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)

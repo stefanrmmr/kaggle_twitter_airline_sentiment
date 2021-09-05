@@ -110,10 +110,10 @@ def plot_confusion_matrix(model, x_test, y_test):
     # use model to do the prediction
     y_pred = model.predict(x_test)
     # compute confusion matrix
-    cm = confusion_matrix(np.argmax(np.array(y_test), axis=1), np.argmax(y_pred, axis=1))
+    confmatrix = confusion_matrix(np.argmax(np.array(y_test), axis=1), np.argmax(y_pred, axis=1))
     # plot confusion matrix
     plt.figure(figsize=(width, height), dpi=resolution)
-    sns.heatmap(cm, cmap=get_continuous_cmap(['#ffffff', accent_color]),
+    sns.heatmap(confmatrix, cmap=get_continuous_cmap(['#ffffff', accent_color]),
                 annot=True, fmt='d', linewidths=1, linecolor='black',
                 xticklabels=sentiment_classes,
                 yticklabels=sentiment_classes)
@@ -127,18 +127,23 @@ def plot_confusion_matrix(model, x_test, y_test):
     plt.show()
 
 
-def plot_box_sentiment(arr_diff, mean_sentiments, data_label):
+def plot_box_sentiment(arr_diff, mean_sentiments, issue_name, data_label):
+
+    plt.rc('xtick', labelsize=8)
+    plt.rc('ytick', labelsize=8)
+    plt.rc('axes', labelsize=10)
+    plt.rc('legend', fontsize=8)
 
     mean_sentiment_score = statistics.mean(arr_diff)
     mean_sentiment_score_str = str('{:0.2f}'.format(mean_sentiment_score))
 
-    fig = plt.figure(dpi=resolution, figsize=(height*2, width))
+    fig = plt.figure(dpi=resolution, figsize=(width, height*2.5))
     ax_top = fig.add_subplot(211)      # left plot     AX_LEFT
     ax_bottom = fig.add_subplot(212)     # right plot    AX_RIGHT
 
     # AX_LEFT create violin plot
     parts = ax_top.violinplot(arr_diff, points=100, vert=False,
-                               showmeans=False, showextrema=False, showmedians=False)
+                              showmeans=False, showextrema=False, showmedians=False)
     # AX_LEFT color the violin plot body
     for pc in parts['bodies']:
         pc.set_facecolor("olive")
@@ -147,45 +152,45 @@ def plot_box_sentiment(arr_diff, mean_sentiments, data_label):
 
     meanprops = dict(linestyle='-', linewidth=2, color='black')
     medianprops = dict(linestyle='-.', linewidth=0, color='firebrick')
-    buckets = np.random.uniform(low=0.97, high=1.03, size=(len(arr_diff),))
+    buckets = np.random.uniform(low=0.96, high=1.04, size=(len(arr_diff),))
 
-    ax_top.scatter(arr_diff, buckets, edgecolors='black', color="olive", alpha=0.7, label=data_label)
+    ax_top.scatter(arr_diff, buckets, edgecolors='black', color="olive", alpha=0.7, s=14, label=data_label)
     ax_top.boxplot(arr_diff, medianprops=medianprops, meanprops=meanprops,
-                    showmeans=True, meanline=True, vert=False, showfliers=False)
+                   showmeans=True, meanline=True, vert=False, showfliers=False)
 
     # AX_LEFT plot lines for mean indicator and plot separation
-    ax_top.plot([mean_sentiment_score, mean_sentiment_score], [0.7, 0.75], color="olive", linewidth=3)
-    ax_top.plot([mean_sentiment_score, mean_sentiment_score], [0.65, 1.3], color="olive", linewidth=1)
+    ax_top.plot([mean_sentiment_score, mean_sentiment_score], [0.6, 0.75], color="olive", linewidth=3)
+    ax_top.plot([mean_sentiment_score, mean_sentiment_score], [0.55, 1.3], color="olive", linewidth=1)
     ax_top.plot([-1.0, 1.0], [1.3, 1.3], color="grey", linewidth=1)
 
     # AX_LEFT add text label with information regarding Mean Sentiment
-    ax_top.text(-1.028, 1.338, f' {mean_sentiment_score_str} mean sentiment ', fontsize=10,
-                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='olive', boxstyle='round'))
+    ax_top.text(-1.028, 1.38, f' {mean_sentiment_score_str} mean sentiment ', fontsize=8,
+                bbox=dict(facecolor='white', alpha=0.8, edgecolor='olive', boxstyle='round'))
 
     # AX_LEFT add text labels with annotation for sentiment
-    ax_top.text(-0.92, 0.73, 'negative', fontsize=8, weight='bold')
-    ax_top.text(0.6, 0.73, 'positive', fontsize=8, weight='bold')
+    ax_top.text(-0.98, 0.65, 'negative', fontsize=8, weight='bold')
+    ax_top.text(0.59, 0.65, 'positive', fontsize=8, weight='bold')
 
     # AX_LEFT titles, axis formatting, output
-    #ax_top.set_title(f"Twitter Sentiment Analysis", pad=15, weight='bold')
-    ax_top.set_xlabel("tweet sentiments", fontsize=10, weight='bold')
+    # ax_top.set_title(f"Twitter Sentiment Analysis", pad=15, weight='bold')
+    ax_top.set_xlabel(f"{issue_name} tweet sentiments")
     ax_top.set_xlim(-1.1, 1.1)
-    ax_top.set_ylim(0.7, 1.6)
+    ax_top.set_ylim(0.6, 1.89)
     ax_top.yaxis.set_ticks([])
     ax_top.yaxis.set_ticklabels([])
     ax_top.grid(linestyle='--')
     ax_top.xaxis.set_major_formatter(mpl_ticker.PercentFormatter(xmax=1))
-    ax_top.legend(loc='upper left', prop={'size': 9})
+    ax_top.legend(loc='upper left', prop={'size': 8})
 
     # AX_RIGHT configure inputs
     height_bar = [mean_sentiments[0],
                   mean_sentiments[1],
                   mean_sentiments[2]]
-    bars = ('pos', 'neg', 'ntr')
+    bars = ('negative', 'neutral', 'positive')
     x_pos = np.arange(len(bars))
 
     # AX_RIGHT Create bar plot for the mean sentiments
-    rects = ax_bottom.bar(x_pos, height_bar, color=['olive', 'grey', 'lightgrey'], edgecolor="black")
+    rects = ax_bottom.bar(x_pos, height_bar, color=['grey', 'lightgrey', 'olive'], edgecolor="black")
     ax_bottom.set_xticks(x_pos)              # define custom ticks
     ax_bottom.set_xticklabels(bars)          # name custom tick labels
     ax_bottom.bar_label(rects, padding=3)    # add label on top of bar
@@ -193,20 +198,20 @@ def plot_box_sentiment(arr_diff, mean_sentiments, data_label):
     ax_bottom.plot([-0.5, 2.5], [0.0, 0.0], color="black", linewidth=1)
     ax_bottom.plot([-0.5, 2.5], [1.0, 1.0], color="grey", linewidth=1)
 
-    ax_bottom.set_xlabel("tweet sentiment classes", fontsize=10, weight='bold')
-    ax_bottom.set_ylabel("mean sentiment distribution", fontsize=10, weight='bold')
+    ax_bottom.set_xlabel("mean sentiment distribution")
+    # ax_bottom.set_ylabel("sentiment distribution")
     ax_bottom.yaxis.set_major_formatter(mpl_ticker.PercentFormatter(xmax=1))
     ax_bottom.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
-    ax_bottom.set_ylim(-0.05, 1.4)
+    ax_bottom.set_ylim(-0.05, 1.5)
     ax_bottom.grid(linestyle='--')
 
     # AX_RIGHT add labels for the bars
-    colors_plot = {'positive  sentiment proportion': 'olive',
-                   'negative sentiment proportion': 'grey',
-                   'neutral   sentiment proportion': 'lightgrey'}
+    colors_plot = {'negative sentiment proportion': 'grey',
+                   'neutral   sentiment proportion': 'lightgrey',
+                   'positive  sentiment proportion': 'olive'}
     labels = list(colors_plot.keys())
     handles = [plt.Rectangle((0, 0), 1, 1, color=colors_plot[label]) for label in labels]
-    ax_bottom.legend(handles, labels, loc='upper left', prop={'size': 9})
+    ax_bottom.legend(handles, labels, loc='upper left', prop={'size': 8})
 
     # PLOT final output
     fig.tight_layout()
@@ -214,56 +219,61 @@ def plot_box_sentiment(arr_diff, mean_sentiments, data_label):
     fig.savefig(f"{workdir}/analysis_plots/average_twitter_sentiment_{time_of_analysis}.png")
     fig.show()
 
+
 def get_text_positions(x_data, y_data, txt_width, txt_height):
     a = list(zip(y_data, x_data))
     text_positions = y_data.copy()
     for index, (y, x) in enumerate(a):
-        local_text_positions = [i for i in a if i[0] > (y - txt_height) 
-                            and (abs(i[1] - x) < txt_width * 2) and i != (y,x)]
+        local_text_positions = [i for i in a if i[0] > (y - txt_height) and
+                                (abs(i[1] - x) < txt_width * 2) and i != (y, x)]
         if local_text_positions:
             sorted_ltp = sorted(local_text_positions)
-            if abs(sorted_ltp[0][0] - y) < txt_height: #True == collision
+            if abs(sorted_ltp[0][0] - y) < txt_height:  # True == collision
                 differ = np.diff(sorted_ltp, axis=0)
                 a[index] = (sorted_ltp[-1][0] + txt_height, a[index][1])
                 text_positions[index] = sorted_ltp[-1][0] + txt_height
                 for k, (j, m) in enumerate(differ):
-                    #j is the vertical distance between words
-                    if j > txt_height * 2: #if True then room to fit a word in
+                    # j is the vertical distance between words
+                    if j > txt_height * 2:  # if True then room to fit a word in
                         a[index] = (sorted_ltp[k][0] + txt_height, a[index][1])
                         text_positions[index] = sorted_ltp[k][0] + txt_height
                         break
     return text_positions
 
-def text_plotter(x_data, y_data, text, text_positions, axis,txt_width,txt_height):
-    for x,y,text,t in zip(x_data, y_data, text, text_positions):
-        axis.text(x - txt_width, 1.01*t, text,rotation=0, color='black', fontsize = 8)
+
+def text_plotter(x_data, y_data, text, text_positions, axis, txt_width, txt_height):
+    for x, y, text, t in zip(x_data, y_data, text, text_positions):
+        axis.text(x - txt_width, 1.01*t, text, rotation=0, color='black', fontsize=8)
         if y != t:
-            axis.arrow(x, t,0,y-t, color='red',alpha=0.5, width=txt_width*0.00001, 
+            axis.arrow(x, t, 0, y-t, color='red', alpha=0.5, width=txt_width*0.00001,
                        head_width=txt_width*0.0001, head_length=txt_height*0.0001, 
-                       zorder=0,length_includes_head=True)
+                       zorder=0, length_includes_head=True)
+
 
 def plot_embeddings(embed_2d, label_array, indices_list):
     fig = plt.figure(figsize=(width, height), dpi=resolution)
     ax = fig.add_subplot()
     # scatter all points/embedding vectors
-    ax.scatter(embed_2d[:, 0], embed_2d[:, 1], s = 1, c = '#808000', alpha = 0.1)
+    ax.scatter(embed_2d[:, 0], embed_2d[:, 1], s=1, c='#808000', alpha=0.1)
 
     # scatter similar embedding vectors
     # the analyzed word is shown in red and close-by vectors have the same color
     cmap = cm.get_cmap("tab10")
     for major_idx, indices in enumerate(indices_list):
-        ax.scatter(embed_2d[indices, 0], embed_2d[indices, 1], s = 2, color = cmap(major_idx/len(indices_list)), alpha = 0.8)
+        ax.scatter(embed_2d[indices, 0], embed_2d[indices, 1], s=2,
+                   color=cmap(major_idx/len(indices_list)), alpha=0.8)
         # mark word that the respective distance ranking is computed on
-        ax.scatter(embed_2d[indices[0], 0], embed_2d[indices[0], 1], s = 4, c = "red")
+        ax.scatter(embed_2d[indices[0], 0], embed_2d[indices[0], 1], s=4, c="red")
 
-    #set the bbox for the text. Increase txt_width for wider text.
+    # set the bbox for the text. Increase txt_width for wider text.
     txt_height = 0.06*(plt.ylim()[1] - plt.ylim()[0])
     txt_width = 0.06*(plt.xlim()[1] - plt.xlim()[0])
-    #Get the corrected text positions, then write the text.
+    # get the corrected text positions, then write the text.
     flat_indices = [index for indices in indices_list for index in indices]
     text_positions = get_text_positions(embed_2d[flat_indices, 0], embed_2d[flat_indices, 1], txt_width, txt_height)
-    text_plotter(embed_2d[flat_indices, 0], embed_2d[flat_indices, 1], label_array[flat_indices], text_positions, ax, txt_width, txt_height)
-    #for index in indices:
+    text_plotter(embed_2d[flat_indices, 0], embed_2d[flat_indices, 1],
+                 label_array[flat_indices], text_positions, ax, txt_width, txt_height)
+    # for index in indices:
     #    ax.annotate(label_array[index], (embed_2d[index, 0], embed_2d[index, 1]), fontsize = 15)
 
     ax.set_xticks([])

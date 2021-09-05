@@ -101,7 +101,7 @@ def tweet_cleanup(tweet_import):
 
 def predict_sentiment(text_input):
 
-    text_list = [text_input]  # Transforms text to a sequence of integers
+    text_list = [tweet_cleanup(text_input)]  # Transforms text to a sequence of integers
     sequence = tokenizer_import.texts_to_sequences(text_list)  # [[3, 157, 24, 201, 7, 156]] SHAPE
     sequence = sequence[0]                                     # [3, 157, 24, 201, 7, 156]   SHAPE
 
@@ -151,7 +151,6 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
 
         # use the model trained to evaluate the tweet text, receive sentiment scores
         tweet_sent = predict_sentiment(tweet_text)
-        print(tweet_sent)
         tweet_score_pos = float(tweet_sent[2])
         tweet_score_neg = float(tweet_sent[0])
         tweet_score_ntr = float(tweet_sent[1])
@@ -166,11 +165,10 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
         lst_sentdiff.append(tweet_score_pos - tweet_score_neg)
 
         print(f"tweepy {tweet_id} |{tweet_time} |"
-              f"POS[{'{:0.4f}'.format(tweet_score_pos)}], "
               f"NEG[{'{:0.4f}'.format(tweet_score_neg)}], "
-              f"NTR[{'{:0.4f}'.format(tweet_score_ntr)}] |"
+              f"NTR[{'{:0.4f}'.format(tweet_score_ntr)}], "
+              f"POS[{'{:0.4f}'.format(tweet_score_pos)}] | "
               f"{tweet_text}")
-
 
     tweets_df = pd.DataFrame(list(zip(lst_id, lst_time, lst_retweets,
                                       lst_text, lst_sentpos, lst_sentneg, lst_sentntr, lst_sentdiff)),
@@ -182,15 +180,16 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
     mean_sentpos = round(statistics.mean(tweets_df["tweet_sentpos"]), 4)
     mean_sentneg = round(statistics.mean(tweets_df["tweet_sentneg"]), 4)
     mean_sentntr = round(statistics.mean(tweets_df["tweet_sentntr"]), 4)
-    mean_sentiments = [mean_sentpos, mean_sentneg, mean_sentntr]
+    mean_sentiments = [mean_sentneg, mean_sentntr, mean_sentpos]
 
     n_tweets_analyzed = len(tweets_df)
-    first_tweet_time = lst_time[0]
-    last_tweet_time = lst_time[len(lst_time)-1]
+    last_tweet_time = lst_time[0]
+    first_tweet_time = lst_time[len(lst_time)-1]
 
     if plot:  # optionally generate a plot and save the png
         plot_box_sentiment(lst_sentdiff,
                            mean_sentiments,
+                           issue_name,
                            f"first tweet {first_tweet_time}\n"
                            f"last tweet {last_tweet_time}\n"
                            f"search tag \"{twitter_tag}\"\n"
@@ -198,13 +197,13 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
 
     # output the resulting mean sentiment for the analysis
     print(f"\nTwitter Sentiment Analysis - MEAN Result: "
-          f" POS[{'{:0.4f}'.format(mean_sentiments[0])}],"
-          f" NEG[{'{:0.4f}'.format(mean_sentiments[1])}],"
-          f" NTR[{'{:0.4f}'.format(mean_sentiments[2])}]")
+          f" NEG[{'{:0.4f}'.format(mean_sentiments[0])}],"
+          f" NTR[{'{:0.4f}'.format(mean_sentiments[1])}],"
+          f" POS[{'{:0.4f}'.format(mean_sentiments[2])}]")
     print(f"For \"{issue_name}\" a total of [{n_tweets_analyzed}] tweets have been found and analyzed.")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
     return mean_sentiments, n_tweets_analyzed, first_tweet_time, last_tweet_time
 
 
 # TODO test the script output for given input values
-tweets_sentiment("delta", "Delta Airlines", 5, "en", 1, "popular", True)
+tweets_sentiment("@delta", "Delta Airlines", 250, "en", 1, "recent", True)
