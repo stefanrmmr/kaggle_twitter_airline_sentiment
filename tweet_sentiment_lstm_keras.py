@@ -111,7 +111,7 @@ def f1_score(precision_val, recall_val):
 
 def predict_sentiment(text_input):
 
-    with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'rb') as handle_import:
+    with open(r'model_data_final\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
 
     text_list = [text_input]  # Transforms text to a sequence of integers
@@ -181,7 +181,7 @@ X_tweets_list, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'].values
 print('After Tokenization & Padding \n', X_tweets_list[2])
 
 
-with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
+with open(r'model_data_final\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # TARGET vector ONE HOT ENCODING (3dummy variables)
@@ -219,7 +219,7 @@ model.compile(loss='categorical_crossentropy', optimizer=adam,
 # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
 # RESTORE the OPTIMAL NN WEIGHTS from when val_loss was minimal (epoch nr.)
 # SAVE model weights at the end of every epoch, if these are the best so far
-checkpoint_filepath = r'model_data_keras_embedding\best_model.hdf5'
+checkpoint_filepath = r'model_data_final\best_model.hdf5'
 model_checkpoint_callback = tf.keras.callbacks.\
     ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
                     save_best_only=True, monitor='val_accuracy', mode='max')
