@@ -2,8 +2,10 @@
 #
 # sentiment classification of US Airline tweets
 
+import sys
 import numpy as np
 import pandas as pd
+from tensorflow.python.keras.layers.core import Flatten
 # for interaction with Twitter
 import tweepy as tw
 # for PREPROCESSING
@@ -27,11 +29,6 @@ from keras import Model, Input
 from keras.layers import Embedding, Conv1D, MaxPooling1D, Bidirectional, LSTM, Dense, Dropout
 from keras.metrics import Precision, Recall
 
-from keras.callbacks import LearningRateScheduler
-from keras.callbacks import History
-
-from keras import losses
-
 def get_text(twitter_data): # get DataFrame with tweet_id and associated text
     text_data = pd.DataFrame(columns = ["tweet_id", "text"])
     for index, id in enumerate(twitter_data.loc[:10, "tweet_id"]):
@@ -45,9 +42,9 @@ def get_text(twitter_data): # get DataFrame with tweet_id and associated text
         text_data = text_data.append(tweet_info, ignore_index = True)
     return text_data
 
-def clean_tweet(tweet):
+def clean_text(text):
     # cleaning of raw tweet
-    text = tweet.lower()                            # lower case
+    text = text.lower()                            # lower case
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
     ###### EMOJIS
@@ -56,10 +53,10 @@ def clean_tweet(tweet):
     text = " ".join(text.split()) # for legibility, avoid having multiple spaces after another
     words = text.split()
     # remove stopwords
-    words = [w for w in words if w not in stopwords.words("english")]
+    #words = [w for w in words if w not in stopwords.words("english")]
     # apply stemming
     #words = [PorterStemmer().stem(w) for w in words]
-    text = " ".join(words)
+    #text = " ".join(words)
     # return list
     return text
 
@@ -79,22 +76,25 @@ def tokenize_and_pad(texts, vocab_size, max_length):
 # Generates skip-gram pairs with negative sampling for a list of sequences
 # (int-encoded sentences) based on window size, number of negative samples
 # and vocabulary size.
-def generate_training_data(sequences, window_size, num_ns, vocab_size, seed):
-    print("Generating training data...")
+def generate_skipgrams(sequences, window_size, num_ns, vocab_size, seed):
+    print("Generating positive and negative Skip-Grams ...")
     # Elements of each training example are appended to these lists.
     targets = np.empty((0,1))
     contexts = np.empty((0, num_ns+1))
     labels = np.empty((0, num_ns+1))
 
     # Build the sampling table for vocab_size tokens.
-    sampling_table = tf.keras.preprocessing.sequence.make_sampling_table(vocab_size) ##????
+    sampling_table = tf.keras.preprocessing.sequence.make_sampling_table(vocab_size)
 
     # Iterate over all sequences (sentences) in dataset.
+    seq_count = 1 # for displaying progress
     for sequence in sequences:
+        sys.stdout.write(f"\rProcess sequence: {str(seq_count).zfill(6)}/{len(sequences)}")
+        sys.stdout.flush()
+        seq_count += 1
         # Generate positive skip-gram pairs for a sequence (sentence).
-        positive_skip_grams, _ = tf.keras.preprocessing.sequence.skipgrams(sequence, vocabulary_size=vocab_size\
+        positive_skip_grams, _ = skipgrams(sequence, vocabulary_size=vocab_size\
             , sampling_table=sampling_table, window_size=window_size, negative_samples=0)
-
         # Iterate over each positive skip-gram pair to produce training examples
         # with positive context word and negative samples.
         for target_word, context_word in positive_skip_grams:
@@ -104,21 +104,20 @@ def generate_training_data(sequences, window_size, num_ns, vocab_size, seed):
 
             # Build context and label vectors (for one target word)
             negative_sampling_candidates = tf.expand_dims(negative_sampling_candidates, 1)
-            context = tf.concat([context_class, negative_sampling_candidates], 0).numpy().reshape(1,5)
+            context = tf.concat([context_class, negative_sampling_candidates], 0).numpy().reshape(1, num_ns+1)
             label = tf.constant([1] + [0]*num_ns, dtype="int64").numpy()
     
             # Append each element from the training example to global lists.
             targets = np.vstack((targets, target_word))
             contexts = np.vstack((contexts, context))
             labels = np.vstack((labels, label))
-
     return targets, contexts, labels
 ################################################################################################
 
 def save_embeddings(embedding_matrix):
     import io
-    out_v = io.open('vectors.tsv', 'w', encoding='utf-8')
-    out_m = io.open('metadata.tsv', 'w', encoding='utf-8')
+    out_v = io.open('model_data_keras_embedding/vectors.tsv', 'w', encoding='utf-8')
+    out_m = io.open('model_data_keras_embedding/metadata.tsv', 'w', encoding='utf-8')
     for index, word in enumerate(vocab):
         vec = embedding_matrix[index+1,:]
         out_v.write('\t'.join([str(x) for x in vec]) + "\n")
@@ -140,42 +139,58 @@ if __name__ == "__main__":
     api = tw.API(auth)
     ###
 
-    # load tweets
-    twitter_data = pd.read_csv("Tweets.csv")
-    print(twitter_data.head())
+    # load airline tweets
+    df_tweets_air_full = pd.read_csv("tweets_data/Tweets_airlines.csv")
+    print(df_tweets_air_full.head())
     # get DataFrame with tweet_id and text
     #text_data = get_text(twitter_data)
-    text_data = twitter_data.loc[:, ["text", "airline_sentiment"]]
-    print(text_data.head())
-    print(text_data.isnull().sum())
+    df_tweets_air = df_tweets_air_full[["text", "airline_sentiment"]]
+    df_tweets_air = df_tweets_air.rename(columns = {"text": "text", "airline_sentiment": "category"})
+    df_tweets_air["category"] = df_tweets_air["category"].map({"negative": -1.0, "neutral": 0.0, "positive": 1.0})
+    df_tweets_air = df_tweets_air.sample(frac=1)  # shuffle dataframe
+    # load more tweets for more accurate results
+    df_tweets_gen = pd.read_csv("tweets_data/Tweets_general.csv")
+    df_tweets_gen = df_tweets_gen[["clean_text", "category"]]
+    df_tweets_gen = df_tweets_gen.rename(columns = {"clean_text": "text", "category": "category"})
+    df_tweets_gen = df_tweets_gen.sample(frac=1)  # shuffle dataframe
+    df_tweets_gen = df_tweets_gen#.head(0)  # TODO custom
+    # concatenate DataFrames
+    df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
     # drop rows/examples where either no text could be fetched or no sentiment was assigned
-    text_data.dropna(axis = 0, how = "any", inplace = True)
-    print(text_data.head())
+    print(df_tweets.isnull().sum())
+    df_tweets.dropna(axis = 0, how = "any", inplace = True)
+    df_tweets = df_tweets.sample(frac=1)  # shuffle dataframe
+    print(df_tweets)
     # One-hot encode sentiments
-    y = pd.get_dummies(text_data["airline_sentiment"])
+    y = pd.get_dummies(df_tweets["category"])
+
     ###########################################
     # DATA VISUALIZATIONS
     ###########################################
+
     # PREPROCESSING
     ## I) Clean tweets/sentences
-    #print(text_data["text"][0])
-    #print(tweet_to_words(text_data["text"][0]))
-    text_data["clean_text"] = text_data["text"].map(clean_tweet)
-    print(text_data.head())
+    #print(clean_text["text"][0])
+    #print(clean_text(text_data["text"][0]))
+    print("Cleaning tweets...")
+    df_tweets["clean_text"] = df_tweets["text"].map(clean_text)
+    print(df_tweets.head())
+
     ## II) Tokenize and pad sequences to yield arrays of integers with uniform length, each integer representing a unique word
     ### define vocabulary size (n-1 most common words that are kept) and maximum length of an encoded sequence
-    vocab_size = 5000 #len(np.unique(np.concatenate(text_data["clean_text"].apply(str.split))))
+    vocab_size = 10000 #len(np.unique(np.concatenate(df_tweets["clean_text"].apply(str.split)))) 
     print(f"vocabulary size = {vocab_size}")
-    max_length = max(text_data["clean_text"].apply(str.split).apply(len)) # length of all sequences = length longest sequence
+    max_length = max(df_tweets["clean_text"].apply(str.split).apply(len)) # length of all sequences = length longest sequence
     print(f"sequence length = {max_length}")
-    X_tp, tokenizer = tokenize_and_pad(text_data["clean_text"], vocab_size, max_length)
+    X_tp, tokenizer = tokenize_and_pad(df_tweets["clean_text"], vocab_size, max_length)
     print(X_tp[3])
     print(X_tp[3].shape)
     print(tokenizer.sequences_to_texts([X_tp[3]]))
     # save vocabulary
     vocab = tokenizer.sequences_to_texts([range(0, vocab_size+1)])[0].split()
     #print(vocab)
-    ## III) Split data set into train and test set ####ToDo: 1) set shuffle to True, 2) use of validation set (kaggle), 3) maybe shuffle rest aswell for visualizations
+
+    ## III) Split data set into train and test set ####ToDo: 1) set shuffle to True 3) maybe shuffle rest aswell for visualizations
     X_train, X_test, y_train, y_test = train_test_split(X_tp, y, test_size = 0.1, shuffle = False)
     # WORD EMBEDDINGS (Word2Vec)
     ## Skip-Gram and Negative-Sampling
@@ -186,13 +201,14 @@ if __name__ == "__main__":
     ##############################################################################
     num_ns = 4
     SEED = 42
-    targets, contexts, labels = generate_training_data(sequences=X_train[:, :], window_size=2, num_ns=num_ns, vocab_size=vocab_size, seed=SEED)
+    print(X_train)
+    targets, contexts, labels = generate_skipgrams(sequences=X_train[:, :], window_size=2, num_ns=num_ns, vocab_size=vocab_size, seed=SEED)
     print(targets[0])
     print(contexts[0])
     print(labels[0])
 
     # model
-    embed_size = 128
+    embed_size = 64
     target_model = Sequential() 
     target_model.add(Embedding(vocab_size, embed_size, embeddings_initializer="glorot_uniform", input_length=1)) 
     target_model.add(Reshape((embed_size, ))) 
@@ -233,4 +249,4 @@ if __name__ == "__main__":
     # Compile model
     model.compile(loss='CategoricalCrossentropy', optimizer = "adam", metrics=['accuracy', Precision(), Recall()]) # sgd
     # Train model
-    model.fit(X_train, y_train, validation_split = 0.2, batch_size = 64, epochs = 20, verbose = 1)
+    #model.fit(X_train, y_train, validation_split = 0.2, batch_size = 64, epochs = 20, verbose = 1)
