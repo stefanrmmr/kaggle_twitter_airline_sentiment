@@ -2,12 +2,14 @@
 
 import os
 import sys
-import seaborn as sns
+import statistics
 import numpy as np
-import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime
 from matplotlib import colors
 from matplotlib import rc
-from datetime import datetime
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mpl_ticker
 from sklearn.metrics import confusion_matrix
 
 workdir = os.path.dirname(__file__)
@@ -19,7 +21,14 @@ height = width / 1.618
 resolution = 500
 accent_color = '#808000'
 
-# pd.options.plotting.backend = "plotly"  # TODO wtf is this?
+rc('font', **{'family': 'serif', 'sans-serif': ['Libertine']})
+
+plt.rc('xtick', labelsize=8)
+plt.rc('ytick', labelsize=8)
+plt.rc('axes', labelsize=10)
+plt.rc('legend', fontsize=8)
+# TITLES are not needed due to image captions in latex report
+
 
 def get_continuous_cmap(hex_list, float_list=None):
     # creates and returns a color map that can be used in heat map figures.
@@ -56,7 +65,6 @@ def plot_training_hist(history_import, epochs_count):
     plt.rc('xtick', labelsize=8)
     plt.rc('ytick', labelsize=8)
     plt.rc('axes', labelsize=10)
-    plt.rc('figure', titlesize=8)
     plt.rc('legend', fontsize=8)
 
     fig, ax = plt.subplots(2, 1, figsize=(width, height*2), dpi=resolution)
@@ -95,11 +103,11 @@ def plot_training_hist(history_import, epochs_count):
     fig.show()
 
 
-def plot_confusion_matrix(model, X_test, y_test):
+def plot_confusion_matrix(model, x_test, y_test):
 
     sentiment_classes = ['Negative', 'Neutral', 'Positive']
     # use model to do the prediction
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(x_test)
     # compute confusion matrix
     cm = confusion_matrix(np.argmax(np.array(y_test), axis=1), np.argmax(y_pred, axis=1))
     # plot confusion matrix
@@ -116,3 +124,91 @@ def plot_confusion_matrix(model, X_test, y_test):
     time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
     plt.savefig(f"{workdir}/analysis_plots/confusion_matrix_testset{time_of_analysis}.png")
     plt.show()
+
+
+def plot_box_sentiment(arr_diff, mean_sentiments, data_label):
+
+    mean_sentiment_score = statistics.mean(arr_diff)
+    mean_sentiment_score_str = str('{:0.2f}'.format(mean_sentiment_score))
+
+    fig = plt.figure(dpi=resolution, figsize=(height*2, width))
+    ax_top = fig.add_subplot(211)      # left plot     AX_LEFT
+    ax_bottom = fig.add_subplot(212)     # right plot    AX_RIGHT
+
+    # AX_LEFT create violin plot
+    parts = ax_top.violinplot(arr_diff, points=100, vert=False,
+                               showmeans=False, showextrema=False, showmedians=False)
+    # AX_LEFT color the violin plot body
+    for pc in parts['bodies']:
+        pc.set_facecolor("olive")
+        pc.set_edgecolor('black')
+        pc.set_alpha(0.2)
+
+    meanprops = dict(linestyle='-', linewidth=2, color='black')
+    medianprops = dict(linestyle='-.', linewidth=0, color='firebrick')
+    buckets = np.random.uniform(low=0.97, high=1.03, size=(len(arr_diff),))
+
+    ax_top.scatter(arr_diff, buckets, edgecolors='black', color="olive", alpha=0.7, label=data_label)
+    ax_top.boxplot(arr_diff, medianprops=medianprops, meanprops=meanprops,
+                    showmeans=True, meanline=True, vert=False, showfliers=False)
+
+    # AX_LEFT plot lines for mean indicator and plot separation
+    ax_top.plot([mean_sentiment_score, mean_sentiment_score], [0.7, 0.75], color="olive", linewidth=3)
+    ax_top.plot([mean_sentiment_score, mean_sentiment_score], [0.65, 1.3], color="olive", linewidth=1)
+    ax_top.plot([-1.0, 1.0], [1.3, 1.3], color="grey", linewidth=1)
+
+    # AX_LEFT add text label with information regarding Mean Sentiment
+    ax_top.text(-1.028, 1.338, f' {mean_sentiment_score_str} mean sentiment ', fontsize=10,
+                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='olive', boxstyle='round'))
+
+    # AX_LEFT add text labels with annotation for sentiment
+    ax_top.text(-0.92, 0.73, 'negative', fontsize=8, weight='bold')
+    ax_top.text(0.6, 0.73, 'positive', fontsize=8, weight='bold')
+
+    # AX_LEFT titles, axis formatting, output
+    #ax_top.set_title(f"Twitter Sentiment Analysis", pad=15, weight='bold')
+    ax_top.set_xlabel("tweet sentiments", fontsize=10, weight='bold')
+    ax_top.set_xlim(-1.1, 1.1)
+    ax_top.set_ylim(0.7, 1.6)
+    ax_top.yaxis.set_ticks([])
+    ax_top.yaxis.set_ticklabels([])
+    ax_top.grid(linestyle='--')
+    ax_top.xaxis.set_major_formatter(mpl_ticker.PercentFormatter(xmax=1))
+    ax_top.legend(loc='upper left', prop={'size': 9})
+
+    # AX_RIGHT configure inputs
+    height_bar = [mean_sentiments[0],
+                  mean_sentiments[1],
+                  mean_sentiments[2]]
+    bars = ('pos', 'neg', 'ntr')
+    x_pos = np.arange(len(bars))
+
+    # AX_RIGHT Create bar plot for the mean sentiments
+    rects = ax_bottom.bar(x_pos, height_bar, color=['olive', 'grey', 'lightgrey'], edgecolor="black")
+    ax_bottom.set_xticks(x_pos)              # define custom ticks
+    ax_bottom.set_xticklabels(bars)          # name custom tick labels
+    ax_bottom.bar_label(rects, padding=3)    # add label on top of bar
+
+    ax_bottom.plot([-0.5, 2.5], [0.0, 0.0], color="black", linewidth=1)
+    ax_bottom.plot([-0.5, 2.5], [1.0, 1.0], color="grey", linewidth=1)
+
+    ax_bottom.set_xlabel("tweet sentiment classes", fontsize=10, weight='bold')
+    ax_bottom.set_ylabel("mean sentiment distribution", fontsize=10, weight='bold')
+    ax_bottom.yaxis.set_major_formatter(mpl_ticker.PercentFormatter(xmax=1))
+    ax_bottom.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    ax_bottom.set_ylim(-0.05, 1.4)
+    ax_bottom.grid(linestyle='--')
+
+    # AX_RIGHT add labels for the bars
+    colors_plot = {'positive  sentiment proportion': 'olive',
+                   'negative sentiment proportion': 'grey',
+                   'neutral   sentiment proportion': 'lightgrey'}
+    labels = list(colors_plot.keys())
+    handles = [plt.Rectangle((0, 0), 1, 1, color=colors_plot[label]) for label in labels]
+    ax_bottom.legend(handles, labels, loc='upper left', prop={'size': 9})
+
+    # PLOT final output
+    fig.tight_layout()
+    time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    fig.savefig(f"{workdir}/analysis_plots/average_twitter_sentiment_{time_of_analysis}.png")
+    fig.show()
