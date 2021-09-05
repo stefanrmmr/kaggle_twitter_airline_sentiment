@@ -7,6 +7,7 @@ import numpy as np
 import seaborn as sns
 from datetime import datetime
 from matplotlib import colors
+from matplotlib import cm
 from matplotlib import rc
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mpl_ticker
@@ -212,3 +213,64 @@ def plot_box_sentiment(arr_diff, mean_sentiments, data_label):
     time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
     fig.savefig(f"{workdir}/analysis_plots/average_twitter_sentiment_{time_of_analysis}.png")
     fig.show()
+
+def get_text_positions(x_data, y_data, txt_width, txt_height):
+    a = list(zip(y_data, x_data))
+    text_positions = y_data.copy()
+    for index, (y, x) in enumerate(a):
+        local_text_positions = [i for i in a if i[0] > (y - txt_height) 
+                            and (abs(i[1] - x) < txt_width * 2) and i != (y,x)]
+        if local_text_positions:
+            sorted_ltp = sorted(local_text_positions)
+            if abs(sorted_ltp[0][0] - y) < txt_height: #True == collision
+                differ = np.diff(sorted_ltp, axis=0)
+                a[index] = (sorted_ltp[-1][0] + txt_height, a[index][1])
+                text_positions[index] = sorted_ltp[-1][0] + txt_height
+                for k, (j, m) in enumerate(differ):
+                    #j is the vertical distance between words
+                    if j > txt_height * 2: #if True then room to fit a word in
+                        a[index] = (sorted_ltp[k][0] + txt_height, a[index][1])
+                        text_positions[index] = sorted_ltp[k][0] + txt_height
+                        break
+    return text_positions
+
+def text_plotter(x_data, y_data, text, text_positions, axis,txt_width,txt_height):
+    for x,y,text,t in zip(x_data, y_data, text, text_positions):
+        axis.text(x - txt_width, 1.01*t, text,rotation=0, color='black', fontsize = 8)
+        if y != t:
+            axis.arrow(x, t,0,y-t, color='red',alpha=0.5, width=txt_width*0.00001, 
+                       head_width=txt_width*0.0001, head_length=txt_height*0.0001, 
+                       zorder=0,length_includes_head=True)
+
+def plot_embeddings(embed_2d, label_array, indices_list):
+    fig = plt.figure(figsize=(width, height), dpi=resolution)
+    ax = fig.add_subplot()
+    # scatter all points/embedding vectors
+    ax.scatter(embed_2d[:, 0], embed_2d[:, 1], s = 1, c = '#808000', alpha = 0.1)
+
+    # scatter similar embedding vectors
+    # the analyzed word is shown in red and close-by vectors have the same color
+    cmap = cm.get_cmap("tab10")
+    for major_idx, indices in enumerate(indices_list):
+        ax.scatter(embed_2d[indices, 0], embed_2d[indices, 1], s = 2, color = cmap(major_idx/len(indices_list)), alpha = 0.8)
+        # mark word that the respective distance ranking is computed on
+        ax.scatter(embed_2d[indices[0], 0], embed_2d[indices[0], 1], s = 4, c = "red")
+
+    #set the bbox for the text. Increase txt_width for wider text.
+    txt_height = 0.06*(plt.ylim()[1] - plt.ylim()[0])
+    txt_width = 0.06*(plt.xlim()[1] - plt.xlim()[0])
+    #Get the corrected text positions, then write the text.
+    flat_indices = [index for indices in indices_list for index in indices]
+    text_positions = get_text_positions(embed_2d[flat_indices, 0], embed_2d[flat_indices, 1], txt_width, txt_height)
+    text_plotter(embed_2d[flat_indices, 0], embed_2d[flat_indices, 1], label_array[flat_indices], text_positions, ax, txt_width, txt_height)
+    #for index in indices:
+    #    ax.annotate(label_array[index], (embed_2d[index, 0], embed_2d[index, 1]), fontsize = 15)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    
+    time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    fig.savefig(f"{workdir}/analysis_plots/embedding_projection{time_of_analysis}.png")
+
+    plt.tight_layout()
+    plt.show()
