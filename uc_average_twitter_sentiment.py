@@ -1,4 +1,4 @@
-# USECASE: use twitter API to find most recent relevant tweets for an airline and analyse their average sentiment
+# USE CASE: use twitter API to find most recent relevant tweets for an airline and analyse their average sentiment
 # Adrian Brünger, Stefan Rummer, TUM, Python Data Analysis for Engineers, summer 2021
 
 from datetime import timedelta
@@ -13,8 +13,6 @@ from keras.models import load_model
 from keras.preprocessing.sequence import pad_sequences
 
 from plotting_framework import *
-from tweet_sentiment_lstm_keras import tweet_cleanup
-# from tweet_sentiment_lstm_keras import predict_class
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # for TensorFlow to work without any interruptions,
@@ -48,6 +46,54 @@ model = load_model(checkpoint_filepath)
 with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'rb') as handle_import:
     tokenizer_import = pickle.load(handle_import)  # load tokenizer
     # always use the same tokenizer so that word tokens are not changed
+
+
+def tweet_cleanup(tweet_import):
+
+    def extract_emojis(text_import):                # extract a list containing the emojis in twe tweet
+        emoji_list = []
+        [emoji_list.append(c) for c in text_import if c in emoji.UNICODE_EMOJI['en']]
+        emoji_list = list(set(emoji_list))          # REMOVE DUPLICATE emojis in the list
+        return emoji_list
+
+    def remove_emojis(text_import):
+        regex_pattern = re.compile(pattern="["
+                                           u"\U0001F600-\U0001F64F"  # emoticons
+                                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                           u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                           u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                           u"\U00002702-\U000027B0"
+                                           u"\U00002702-\U000027B0"
+                                           u"\U000024C2-\U0001F251"
+                                           u"\U0001f926-\U0001f937"
+                                           u"\U00010000-\U0010ffff"
+                                           u"\u2640-\u2642"
+                                           u"\u2600-\u2B55"
+                                           u"\u200d"
+                                           u"\u23cf"
+                                           u"\u23e9"
+                                           u"\u231a"
+                                           u"\ufe0f"  # dingbats
+                                           u"\u3030"
+                                           "]+", flags=re.UNICODE)
+        return regex_pattern.sub(' ', text_import)
+
+    emojis_in_text = extract_emojis(tweet_import)
+    emoji_string = ' '.join(emj for emj in emojis_in_text)
+
+    text = remove_emojis(tweet_import)              # remove all emojis after extraction
+    text = text + emoji_string                      # add every emoji ONCE at the end
+    text = emoji.demojize(text)                     # translate emojis into words
+    text = text.lower()                             # convert text lower case
+    text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
+    text = re.sub(r"#", "", text)                   # text remove hashtag symbol
+    text = re.sub(r"@\S+", "", text)                # text remove @mentions
+    text = re.sub(r"'", "", text)                   # remove apostrophes
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
+    text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
+    text = ' '.join(text.split())                   # remove multiple white space
+    text = text.lstrip()                            # remove space from the left
+    return text
 
 
 def predict_class(tweet):
