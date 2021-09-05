@@ -2,6 +2,7 @@
 # Adrian Brünger, Stefan Rummer, TUM, summer 2021
 
 import pickle
+import emoji
 import pandas as pd
 from nltk.stem.porter import *
 from sklearn.model_selection import train_test_split
@@ -31,27 +32,57 @@ sys.path.append(workdir)  # append path of project folder directory
 vocabulary_size = 5000   # TODO HYPER PARAMETER
 embedding_size = 32      # TODO HYPER PARAMETER
 epochs = 20              # TODO HYPER PARAMETER
-learning_rate = 0.0001  # TODO HYPER PARAMETER
+learning_rate = 0.0003   # TODO HYPER PARAMETER
 momentum = 0.0           # TODO HYPER PARAMETER
 batch_size = 164         # TODO HYPER PARAMETER
 
 
-def tweet_to_words(tweet):
+def tweet_cleanup(tweet_import):
 
-    text = tweet.lower()                            # lower case
+    def extract_emojis(text_import):                # extract a list containing the emojis in twe tweet
+        emoji_list = []
+        [emoji_list.append(c) for c in text_import if c in emoji.UNICODE_EMOJI['en']]
+        emoji_list = list(set(emoji_list))          # REMOVE DUPLICATE emojis in the list
+        return emoji_list
+
+    def remove_emojis(text_import):
+        regex_pattern = re.compile(pattern="["
+                                           u"\U0001F600-\U0001F64F"  # emoticons
+                                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                           u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                           u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                           u"\U00002702-\U000027B0"
+                                           u"\U00002702-\U000027B0"
+                                           u"\U000024C2-\U0001F251"
+                                           u"\U0001f926-\U0001f937"
+                                           u"\U00010000-\U0010ffff"
+                                           u"\u2640-\u2642"
+                                           u"\u2600-\u2B55"
+                                           u"\u200d"
+                                           u"\u23cf"
+                                           u"\u23e9"
+                                           u"\u231a"
+                                           u"\ufe0f"  # dingbats
+                                           u"\u3030"
+                                           "]+", flags=re.UNICODE)
+        return regex_pattern.sub(' ', text_import)
+
+    emojis_in_text = extract_emojis(tweet_import)
+    emoji_string = ' '.join(emj for emj in emojis_in_text)
+
+    text = remove_emojis(tweet_import)              # remove all emojis after extraction
+    text = text + emoji_string                      # add every emoji ONCE at the end
+    text = emoji.demojize(text)                     # translate emojis into words
+    text = text.lower()                             # convert text lower case
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"#", "", text)                   # text remove hashtag symbol
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
-    text = re.sub(r"'", '', text)                   # remove apostrophes
+    text = re.sub(r"'", "", text)                   # remove apostrophes
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
     text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
-
-    words = text.split()        # Tokenize
-
-    # TODO STEMMER maybe apply stemming to split into word stems (generalization)
-    # words = [PorterStemmer().stem(w) for w in words]
-
-    return words
+    text = text.lstrip()                            # remove space from the left
+    text = ' '.join(text.split())                   # remove multiple white space
+    return text
 
 
 def tokenize_pad_sequences(text):
@@ -68,19 +99,16 @@ def tokenize_pad_sequences(text):
     return output, tokenizer_padseq
 
 
-def f1_score(precision_val, recall_val):
-    f1_val = 2 * (precision_val * recall_val) / (precision_val + recall_val + k.epsilon())
-    return f1_val
+def predict_class(tweet_import):
 
-
-def predict_class(text):
+    # apply tweet cleanup function
+    text = tweet_cleanup(tweet_import)
 
     with open(r'model_data\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
         # always use the same tokenizer so that word tokens are not changed
 
     sentiment_classes = ['Negative', 'Neutral', 'Positive']
-
     # Transforms text to a sequence of integers using a tokenizer object
     xt = tokenizer_import.texts_to_sequences(text)
     # Pad sequences to the same length
@@ -91,6 +119,12 @@ def predict_class(text):
     yt = model.predict(xt).argmax(axis=1)
     # Print the predicted sentiment
     print('SENTIMENT prediction: ', sentiment_classes[yt[0]])
+    return model.predict(xt)
+
+
+def f1_score(precision_val, recall_val):
+    f1_val = 2 * (precision_val * recall_val) / (precision_val + recall_val + k.epsilon())
+    return f1_val
 
 
 print("\n_______DAML_Twitter_Sentiment________\n")
@@ -98,7 +132,7 @@ print("\n_______DAML_Twitter_Sentiment________\n")
 
 # IMPORT DATA TWEETS: Airlines
 df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
-print(df_tweets_air_full.info())
+print(df_tweets_air_full.info(), "\n")
 df_tweets_air = df_tweets_air_full.copy()
 df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
 df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
@@ -111,13 +145,24 @@ df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
 
 df_tweets.isnull().sum()                # Check for missing data
 df_tweets.dropna(axis=0, inplace=True)  # Drop missing rows
-print(df_tweets.head(10))  # output first ten tweet df entries
+print(df_tweets.head(10), "\n")         # output first ten tweet df entries
 
-# Apply data processing to each tweet
-X_tweets_list = list(map(tweet_to_words, df_tweets['clean_text']))
+# Apply data processing to each tweet in df_tweets['clean_text']
+seq_count = 1
+tweet_data_size = len(df_tweets['clean_text'])
+for index in range(tweet_data_size):
+    df_tweets.at[index, 'clean_text'] = tweet_cleanup(df_tweets.iloc[index]['clean_text'])
+    sys.stdout.write(f"\rPreprocessing tweet texts: {str(seq_count).zfill(6)}/{tweet_data_size}")
+    sys.stdout.flush()
+    seq_count += 1
 
 # DYNAMICALLY change the max_len parameter
-max_len = max([len(x) for x in X_tweets_list])
+max_len = max([len(tweet.split()) for tweet in df_tweets['clean_text']])
+
+for tweet in df_tweets['clean_text']:
+    if len(tweet.split()) > 60:
+        print(tweet)
+
 print(f"\nMax number of words expected"
       f" in a processed tweet: {max_len} \n")
 
@@ -150,12 +195,13 @@ rmsprop = RMSprop(learning_rate=learning_rate, rho=0.9, momentum=momentum,
                             epsilon=1e-07, centered=True)"""
 
 adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
+# use standard settings for adam optimizer
 
 model = Sequential()
 model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
 # model.add(Conv1D(filters=32, kernel_size=3, padding='same', activation='relu'))
 # model.add(MaxPooling1D(pool_size=2))
-model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))  #
+model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))
 # model.add(Dropout(0.4))
 model.add(Dense(3, activation='softmax'))
 
