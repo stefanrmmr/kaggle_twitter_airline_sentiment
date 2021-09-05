@@ -71,7 +71,7 @@ def plot_training_hist(history_import, epochs_count):
     fig, ax = plt.subplots(2, 1, figsize=(width, height*2), dpi=resolution)
 
     # Top plot: model ACCURACY
-    ax[0].plot(history_import.history['accuracy'], color="darkslategrey")
+    ax[0].plot(history_import.history['accuracy'], color="black")
     ax[0].plot(history_import.history['val_accuracy'], color=accent_color)
     # ax[0].set_xlabel('completed training epochs')
     ax[0].set_ylabel('model accuracy')
@@ -85,7 +85,7 @@ def plot_training_hist(history_import, epochs_count):
     ax[0].grid(color='lightgrey', linestyle='--', linewidth=1)
 
     # Bottom plot: model LOSS
-    ax[1].plot(history_import.history['loss'], color="darkslategrey")
+    ax[1].plot(history_import.history['loss'], color="black")
     ax[1].plot(history_import.history['val_loss'], color=accent_color)
     ax[1].set_xlabel('completed training epochs')
     ax[1].set_ylabel('model loss')
@@ -178,7 +178,7 @@ def plot_box_sentiment(arr_diff, mean_sentiments, issue_name, data_label):
     ax_top.set_ylim(0.6, 1.89)
     ax_top.yaxis.set_ticks([])
     ax_top.yaxis.set_ticklabels([])
-    ax_top.grid(linestyle='--')
+    ax_top.grid(color='lightgrey', linestyle='--')
     ax_top.xaxis.set_major_formatter(mpl_ticker.PercentFormatter(xmax=1))
     ax_top.legend(loc='upper left', prop={'size': 8})
 
@@ -203,7 +203,7 @@ def plot_box_sentiment(arr_diff, mean_sentiments, issue_name, data_label):
     ax_bottom.yaxis.set_major_formatter(mpl_ticker.PercentFormatter(xmax=1))
     ax_bottom.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
     ax_bottom.set_ylim(-0.05, 1.5)
-    ax_bottom.grid(linestyle='--')
+    ax_bottom.grid(color='lightgrey', linestyle='--', axis='y')
 
     # AX_RIGHT add labels for the bars
     colors_plot = {'negative sentiment proportion': 'grey',

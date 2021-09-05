@@ -207,10 +207,11 @@ adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
 model = Sequential()
 model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
 model.add(SpatialDropout1D(0.4))
-model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))
-# model.add(Dropout(0.4))
+model.add(Bidirectional(LSTM(32)))  # , dropout=0.2, recurrent_dropout=0.2
+# model.add(Dropout(0.2))
 model.add(Dense(3, activation='softmax'))
 
+# PLOT model structure and layers
 # tf.keras.utils.plot_model(model, show_shapes=True)
 print(model.summary())  # OUTPUT model information
 

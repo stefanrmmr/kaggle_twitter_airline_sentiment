@@ -11,7 +11,6 @@ import emoji
 import yaml
 import re
 
-
 from plotting_framework import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
