@@ -13,6 +13,12 @@ print("\n_______FUNDAMENTAL DATA ANALYSIS________\n")
 # IMPORT DATA TWEETS: Airlines
 df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
 df_selected = df_tweets_air_full[['airline_sentiment', 'tweet_location', 'airline']]
+
+# abbreviate Airline names
+df_selected['airline'].replace({"Virgin America": "Virgin"}, inplace=True)
+df_selected['airline'].replace({"Southwest": "Southw."}, inplace=True)
+df_selected['airline'].replace({"US Airways": "US Airw."}, inplace=True)
+
 df_neg = df_selected[df_selected['airline_sentiment'] == 'negative']
 df_ntr = df_selected[df_selected['airline_sentiment'] == 'neutral']
 df_pos = df_selected[df_selected['airline_sentiment'] == 'positive']
@@ -43,3 +49,6 @@ for airline in airlines:  # calculate distribution of tweet data among airlines
                      'count_neg': count_neg,
                      'count_ntr': count_ntr,
                      'count_pos': count_pos})
+
+plot_tweet_distribution(dict_air)
+plot_sentiment_distribution(dict_air)

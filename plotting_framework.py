@@ -21,6 +21,7 @@ width = 3.487
 height = width / 1.618
 resolution = 500
 accent_color = '#808000'
+tum_blue = '#3070b3'
 
 rc('font', **{'family': 'serif', 'sans-serif': ['Libertine']})
 
@@ -218,6 +219,94 @@ def plot_box_sentiment(arr_diff, mean_sentiments, issue_name, data_label):
     time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
     fig.savefig(f"{workdir}/analysis_plots/average_twitter_sentiment_{time_of_analysis}.png")
     fig.show()
+
+
+def plot_tweet_distribution(dict_air):
+
+    plt.rc('xtick', labelsize=8)
+    plt.rc('ytick', labelsize=8)
+    plt.rc('legend', fontsize=8)
+    plt.rc('axes', labelsize=10)
+
+    fig = plt.figure(dpi=500, figsize=(width, width))
+    ax = fig.add_subplot(111)
+
+    airlines, arr_neg, arr_ntr, arr_pos = [], [], [], []
+    for index in range(len(dict_air)):
+        airlines.append(dict_air[index]['airline_name'])
+        arr_neg.append(dict_air[index]['count_neg'])
+        arr_ntr.append(dict_air[index]['count_ntr'])
+        arr_pos.append(dict_air[index]['count_pos'])
+
+    print(airlines)
+    print("neg tweet counts: ", arr_neg)
+    print("ntr tweet counts: ", arr_ntr)
+    print("pos tweet counts: ", arr_pos)
+    x_pos = np.arange(len(airlines))
+    x_pos = x_pos - 1
+    x_pos_shift1 = [x+0.25 for x in x_pos]
+    x_pos_shift2 = [x+0.5 for x in x_pos]
+
+    ax.bar(x_pos_shift2, arr_pos, align="center", width=0.25, color='olive',
+           label=f" {sum(arr_pos)} positive tweets", edgecolor='black')
+    ax.bar(x_pos_shift1, arr_ntr, align="center", width=0.25, color='lightgrey',
+           label=f" {sum(arr_ntr)} neutral tweets", edgecolor='black')
+    ax.bar(x_pos, arr_neg, align="center", width=0.25, color='grey',
+           label=f" {sum(arr_neg)} negative tweets", edgecolor='black')
+
+    ax.set_xlabel("Airlines in the data set")
+    ax.set_ylabel("Amount of tweets")
+    ax.legend()
+    ax.set_ylim(0, 3000)
+    ax.grid(axis='y', linestyle='--', color="lightgrey", linewidth=0.5)
+
+    ax.set_xticks(x_pos_shift1)   # define custom ticks
+    ax.set_xticklabels(airlines)  # name custom tick labels
+    ax.xaxis.set_tick_params(rotation=30)
+
+    fig.tight_layout()
+    time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    fig.savefig(f"{workdir}/analysis_plots/fundamental_analysis_{time_of_analysis}.png")
+    fig.show()
+
+
+def plot_sentiment_distribution(dict_air):
+
+    plt.rc('xtick', labelsize=8)
+    plt.rc('ytick', labelsize=8)
+    plt.rc('legend', fontsize=8)
+    plt.rc('axes', labelsize=10)
+
+    fig = plt.figure(dpi=500, figsize=(width, height))
+    ax = fig.add_subplot(111)
+
+    colors_ = ['lightgrey', 'grey', 'darkslategrey', 'teal', 'olive', tum_blue]
+
+    airlines, tweet_counts = [], []
+    for index in range(len(dict_air)):
+        airlines.append(dict_air[index]['airline_name'])
+        tweet_counts.append(dict_air[index]['tweet_count'])
+
+    wedges, texts, _ = ax.pie(tweet_counts, colors=colors_, wedgeprops=dict(width=0.5),
+                              startangle=-40, autopct="%.2f%%", textprops={'fontsize': 8, 'weight': 'bold'})
+
+    bbox_props = dict(boxstyle="round,pad=0.3", fc="w", ec="k", lw=0.72)
+    kw = dict(arrowprops=dict(arrowstyle="-"), bbox=bbox_props, zorder=0, va="center")
+
+    for i, p in enumerate(wedges):
+        ang = (p.theta2 - p.theta1)/2. + p.theta1
+        y = np.sin(np.deg2rad(ang))
+        x = np.cos(np.deg2rad(ang))
+        horizont_align = {-1: "right", 1: "left"}[int(np.sign(x))]
+        connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+        kw["arrowprops"].update({"connectionstyle": connectionstyle})
+        ax.annotate(airlines[i], xy=(x, y), xytext=(1.35*np.sign(x), 1.4*y),
+                    horizontalalignment=horizont_align, **kw)
+
+    fig.tight_layout()
+    time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    fig.savefig(f"{workdir}/analysis_plots/fundamental_donut_{time_of_analysis}.png")
+    plt.show()
 
 
 def get_text_positions(x_data, y_data, txt_width, txt_height):
