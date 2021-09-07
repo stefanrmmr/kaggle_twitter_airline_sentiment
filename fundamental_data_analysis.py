@@ -50,5 +50,5 @@ for airline in airlines:  # calculate distribution of tweet data among airlines
                      'count_ntr': count_ntr,
                      'count_pos': count_pos})
 
-plot_tweet_distribution(dict_air)
+# plot_tweet_distribution(dict_air)
 plot_sentiment_distribution(dict_air)

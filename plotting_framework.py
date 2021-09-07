@@ -290,8 +290,8 @@ def plot_sentiment_distribution(dict_air):
     wedges, texts, _ = ax.pie(tweet_counts, colors=colors_, wedgeprops=dict(width=0.5),
                               startangle=-40, autopct="%.2f%%", textprops={'fontsize': 8, 'weight': 'bold'})
 
-    bbox_props = dict(boxstyle="round,pad=0.3", fc="w", ec="k", lw=0.72)
-    kw = dict(arrowprops=dict(arrowstyle="-"), bbox=bbox_props, zorder=0, va="center")
+    # bbox_props = dict(boxstyle="round,pad=0.3", fc="w", ec="k", lw=0.72)
+    kw = dict(arrowprops=dict(arrowstyle="-"), zorder=0, va="center")
 
     for i, p in enumerate(wedges):
         ang = (p.theta2 - p.theta1)/2. + p.theta1
@@ -301,7 +301,7 @@ def plot_sentiment_distribution(dict_air):
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
         kw["arrowprops"].update({"connectionstyle": connectionstyle})
         ax.annotate(airlines[i], xy=(x, y), xytext=(1.35*np.sign(x), 1.4*y),
-                    horizontalalignment=horizont_align, **kw)
+                    horizontalalignment=horizont_align, fontsize=10, **kw)
 
     fig.tight_layout()
     time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
