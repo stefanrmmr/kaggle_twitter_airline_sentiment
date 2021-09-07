@@ -1,3 +1,7 @@
+# EMBEDDING ANALYSIS
+# Adrian Brünger, Stefan Rummer, TUM, summer 2021
+
+# In this file a PCA is used to visualize embeddings
 
 # imports
 # GENERAL

@@ -351,9 +351,9 @@ def plot_embeddings(embed_2d, label_array, indices_list):
     # the analyzed word is shown in red and close-by vectors have the same color
     cmap = cm.get_cmap("tab10")
     for major_idx, indices in enumerate(indices_list):
-        ax.scatter(embed_2d[indices, 0], embed_2d[indices, 1], s=2, colore=cmap(major_idx/len(indices_list)), alpha=0.8)
+        ax.scatter(embed_2d[indices, 0], embed_2d[indices, 1], s=3, color=cmap(major_idx/len(indices_list)), alpha=0.6)
         # mark word that the respective distance ranking is computed on
-        ax.scatter(embed_2d[indices[0], 0], embed_2d[indices[0], 1], s=4, c="red")
+        ax.scatter(embed_2d[indices[0], 0], embed_2d[indices[0], 1], s=8, color=cmap(major_idx/len(indices_list)), alpha = 0.8)
 
     # set the bbox for the text. Increase txt_width for wider text.
     txt_height = 0.06*(plt.ylim()[1] - plt.ylim()[0])
