@@ -33,7 +33,7 @@ vocabulary_size = 3000   # TODO HYPER PARAMETER
 embedding_size = 32      # TODO HYPER PARAMETER
 epochs = 20              # TODO HYPER PARAMETER
 learning_rate = 0.0005   # TODO HYPER PARAMETER
-momentum = 0.0           # TODO HYPER PARAMETER
+#momentum = 0.0           # TODO HYPER PARAMETER
 batch_size = 64          # TODO HYPER PARAMETER
 
 
@@ -41,7 +41,7 @@ def tweet_cleanup(tweet_import):
 
     def extract_emojis(text_import):                # extract a list containing the emojis in twe tweet
         emoji_list = []
-        [emoji_list.append(c) for c in text_import if c in emoji.UNICODE_EMOJI['en']]
+        [emoji_list.append(c) for c in text_import if c in emoji.UNICODE_EMOJI.keys()] # ["en"]
         emoji_list = list(set(emoji_list))          # REMOVE DUPLICATE emojis in the list
         return emoji_list
 
@@ -260,6 +260,6 @@ plot_confusion_matrix(model, X_test, y_test)
 
 print(predict_sentiment("I love this, best flight ever"))
 print(predict_sentiment("I had a perfect experience 324324 "))
-
 print(predict_sentiment("You should fire this bad service"))
 print(predict_sentiment("My flight was hours delayed"))
+print(predict_sentiment("The flight was perfect!"))
