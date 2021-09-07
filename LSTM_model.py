@@ -19,8 +19,8 @@ import keras.backend as k
 from keras.models import load_model
 from keras.models import Sequential
 from keras.metrics import Precision, Recall
-from keras.layers import Embedding  # Conv1D, MaxPooling1D
-from keras.layers import Bidirectional, LSTM, Dense  # Dropout
+from keras.layers import Embedding, SpatialDropout1D  # Conv1D, MaxPooling1D
+from keras.layers import Bidirectional, LSTM, Dense, Dropout
 
 #for PLOTTING
 from plotting_framework import *
@@ -41,24 +41,19 @@ def build_LSTM(vocab_size, max_length, embedding_size, embedding_matrix, trainab
         model.add(Embedding(vocab_size, embedding_size, input_length = max_length, trainable = True))
     else: # use pretrained weights specified by "embedding_matrix"
         model.add(Embedding(vocab_size, embedding_size, weights = [embedding_matrix], input_length = max_length, trainable = False))
-    # model.add(Conv1D(filters=32, kernel_size=3, padding='same', activation='relu'))
-    # model.add(MaxPooling1D(pool_size=2))
-    model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))
-    # model.add(Dropout(0.4))
+    #model.add(SpatialDropout1D(0.4))
+    model.add(Bidirectional(LSTM(units=embedding_size, dropout=0.2, recurrent_dropout=0.2)))
+    #model.add(Dropout(0.4))
+    #model.add(Dense(units=vocab_size))
     model.add(Dense(3, activation='softmax'))
+
     # tf.keras.utils.plot_model(model, show_shapes=True)
     print(model.summary())  # OUTPUT model information
+
     #2) compile model
 
-    learning_rate = 0.0001   # TODO HYPER PARAMETER
-    momentum = 0.0           # TODO HYPER PARAMETER
-
     # optimizers
-    """sgd = SGD(lr=learning_rate, momentum=momentum,
-            decay=(learning_rate/epochs), nesterov=False)
-    rmsprop = RMSprop(learning_rate=learning_rate, rho=0.9, momentum=momentum,
-                                epsilon=1e-07, centered=True)"""
-    adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
+    adam = Adam(learning_rate=0.0005, beta_1=0.9, beta_2=0.999)
 
     model.compile(loss='categorical_crossentropy', optimizer=adam,
                 metrics=['accuracy', Precision(), Recall()])
@@ -71,7 +66,7 @@ def f1_score(precision_val, recall_val):
     return f1_val
 
 def predict_class(model, tokenizer, max_length, text):
-
+    # predict the sentiments of given texts
     sentiment_classes = np.array(['Negative', 'Neutral', 'Positive'])
 
     # Transforms text to a sequence of integers using a tokenizer object
@@ -79,23 +74,23 @@ def predict_class(model, tokenizer, max_length, text):
     # Pad sequences to the same length
     X_tp = pad_sequences(X_t, maxlen = max_length, padding = 'post')
     # Do the prediction using the loaded model
-    print(f"Sentiments:\n{model.predict(X_tp)}")
+    sentiment_probs = model.predict(X_tp)
+    print(f"Sentiments:\n{sentiment_probs}")
 
-    y_hat = np.array(model.predict(X_tp).argmax(axis=1))
+    y_hat = np.array(sentiment_probs.argmax(axis=1))
     # Print the predicted sentiment
     print('SENTIMENT prediction:\n', sentiment_classes[y_hat])
-    return None ##### TODO
+    return sentiment_probs
 
 if __name__ == "__main__":
 
     print("\n_______DAML_Twitter_Sentiment________\n")
 
     # load tweets
-    df_tweets, y = prepare_dataframe(airline = 1, filler_data = 1, shuffle = False)
+    df_tweets, y = prepare_dataframe(airline = 1, shuffle = False)
     # Examples in airline data: 14640
-    # Examples in filler_data: 162980
-    # airline, filler_data from [0, 1] determine percentage of airline data
-    # and additional data used. Set shuffle to False to reproduce outcomes
+    # airline from [0, 1] determine percentage of airline data
+    # Set shuffle to False to reproduce outcomes
     print(df_tweets.head())
 
     # PREPROCESSING
@@ -126,19 +121,20 @@ if __name__ == "__main__":
         train_test_split(X_tp, y, test_size=0.2, random_state=1)
     X_train, X_val, y_train, y_val = \
         train_test_split(X_train, y_train, test_size=0.25, random_state=1)
-    print(f"SHAPE X_train: {X_train.shape}")
-    print(f"SHAPE X_valid: {X_val.shape}")
-    print(f"SHAPE X_test : {X_test.shape}\n")
-    print(f"SHAPE Y_train: {y_train.shape}")
-    print(f"SHAPE Y_valid: {y_val.shape}")
-    print(f"SHAPE Y_test : {y_test.shape}\n")
+        
+    print(f"SHAPE X_train | rows: {X_train.shape[0]} cols: {X_train.shape[1]}")
+    print(f"SHAPE X_valid | rows: {X_val.shape[0]} cols: {X_val.shape[1]}")
+    print(f"SHAPE X_test  | rows: {X_test.shape[0]} cols: {X_test.shape[1]}")
+    print(f"SHAPE Y_train | rows: {y_train.shape[0]} cols: {y_train.shape[1]}")
+    print(f"SHAPE Y_valid | rows: {y_val.shape[0]} cols: {y_val.shape[1]}")
+    print(f"SHAPE Y_test  | rows: {y_test.shape[0]} cols: {y_test.shape[1]}\n")
 
     # LSTM MODEL
 
     # define model characteristics
-    embedding_size = 32      # TODO HYPER PARAMETER
-    epochs = 20              # TODO HYPER PARAMETER
-    batch_size = 164         # TODO HYPER PARAMETER
+    embedding_size = 128      # TODO HYPER PARAMETER
+    epochs = 20               # TODO HYPER PARAMETER
+    batch_size = 64           # TODO HYPER PARAMETER
     
     # build model
     lstm_model = build_LSTM(vocab_size, max_length, embedding_size, embedding_matrix = 0, trainable = True)

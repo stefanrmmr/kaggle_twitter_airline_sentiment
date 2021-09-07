@@ -116,11 +116,10 @@ if __name__ == "__main__":
     print("\n_______DAML_Twitter_Sentiment________\n")
 
     # load tweets
-    df_tweets, y = prepare_dataframe(airline = 0.2, filler_data = 0, shuffle = False)
+    df_tweets, y = prepare_dataframe(airline = 1, shuffle = False)
     # Examples in airline data: 14640
-    # Examples in filler_data: 162980
     # airline, filler_data from [0, 1] determine percentage of airline data
-    # and additional data used. Set shuffle to False to reproduce outcomes
+    # Set shuffle to False to reproduce outcomes
     print(df_tweets.head())
 
     # PREPROCESSING
@@ -134,7 +133,7 @@ if __name__ == "__main__":
     print("\nPreprocessing parameters:")
 
     # TODO custom
-    vocab_size = 4000 #len(np.unique(np.concatenate(df_tweets["clean_text"].apply(str.split)))) 
+    vocab_size = 5000 #len(np.unique(np.concatenate(df_tweets["clean_text"].apply(str.split))))
     print(f"vocabulary size: {vocab_size}")
 
     # TODO custom
@@ -168,11 +167,11 @@ if __name__ == "__main__":
     embed_size = 128
     print(f"Dimension of embeddings: {embed_size}")
     target_model = Sequential() 
-    target_model.add(Embedding(vocab_size, embed_size, input_length = 1)) 
+    target_model.add(Embedding(vocab_size, embed_size, input_length = 1, name = "target_embedding")) 
     target_model.add(Reshape((embed_size, ))) 
 
     context_model = Sequential() 
-    context_model.add(Embedding(vocab_size, embed_size, input_length = num_ns + 1))
+    context_model.add(Embedding(vocab_size, embed_size, input_length = num_ns + 1, name = "context_embedding"))
     context_model.add(Reshape((num_ns + 1, embed_size)))
 
     dot_product = dot([target_model.output, context_model.output], axes = (1,2), normalize = False)
@@ -181,6 +180,8 @@ if __name__ == "__main__":
     model._name = "Word2Vec"
     # compile model
     model.compile(loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True), optimizer = "adam", metrics = "accuracy")
+    
+    #tf.keras.utils.plot_model(model, show_shapes=True)
     print(model.summary())
 
     # fit model to Skip-Grams (target words and contexts) with negative samples as described above
@@ -193,23 +194,79 @@ if __name__ == "__main__":
     # save embedding-vectors and words in .tsv files for later use and visualizations
     save_embeddings(embedding_matrix, vocab)
 
-
+    ###################################################################################
+    ###################################################################################
     # Analysis of performance in LSTM
 
     # define model characteristics
     epochs = 20              # TODO HYPER PARAMETER
-    batch_size = 164         # TODO HYPER PARAMETER
+    batch_size = 64          # TODO HYPER PARAMETER
 
-    # build model with pretrained embedding weights
+
+    # PRETRAINED EMBEDDING WEIGHTS
+
+    # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
+    # RESTORE the OPTIMAL NN WEIGHTS from when val_loss was minimal (epoch nr.)
+    # SAVE model weights at the end of every epoch, if these are the best so far
+    time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    checkpoint_filepath = rf'model_data_keras_embedding\best_pretrained_model_testrun_{time_of_analysis}.hdf5'
+    model_checkpoint_callback = tf.keras.callbacks.\
+        ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
+                        save_best_only=True, monitor='val_loss', mode='min')
+    
+    # build model
     custom_embed_lstm_model = build_LSTM(vocab_size, max_length, embed_size, embedding_matrix, trainable = False)
     # fit model
-    custom_embed_history = custom_embed_lstm_model.fit(X_train, y_train, batch_size = batch_size, epochs = epochs, validation_split = 0.2)
-
-    # compare with trainable weights
-    trainable_embed_lstm_model = build_LSTM(vocab_size, max_length, embed_size, embedding_matrix = 0, trainable = True)
-    # fit model
-    trainable_embed_history = trainable_embed_lstm_model.fit(X_train, y_train, batch_size = batch_size, epochs = epochs, validation_split = 0.2)
+    custom_embed_history = custom_embed_lstm_model.fit(X_train, y_train, batch_size = batch_size\
+        , epochs = 20, validation_split = 0.2, verbose = 1, callbacks = [model_checkpoint_callback])
     
     # PLOT ACCURACY and LOSS evolution
     plot_training_hist(custom_embed_history, epochs)
+    
+    # The model weights (that are considered the best) are loaded into the model.
+    custom_embed_lstm_model = load_model(checkpoint_filepath)
+
+    # Evaluate model on the TEST SET  METRICS
+    loss, accuracy, precision, recall = custom_embed_lstm_model.evaluate(X_test, y_test, verbose=0)
+    print("\nPretrained Embeddings:")
+    print("___________________________________________________")
+    print('TEST Dataset Loss      : {:.4f}'.format(loss))
+    print('TEST Dataset Accuracy  : {:.4f}'.format(accuracy))
+    print('TEST Dataset Precision : {:.4f}'.format(precision))
+    print('TEST Dataset Recall    : {:.4f}'.format(recall))
+    print('TEST Dataset F1 Score  : {:.4f}'.format(f1_score(precision, recall)))
+    print("===================================================")
+    #######################################################################################
+
+    '''#TRAINABLE WEIGHTS
+
+    # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
+    # RESTORE the OPTIMAL NN WEIGHTS from when val_loss was minimal (epoch nr.)
+    # SAVE model weights at the end of every epoch, if these are the best so far
+    time_of_analysis = str(datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    checkpoint_filepath = rf'model_data_keras_embedding\best_trainable_model_testrun_{time_of_analysis}.hdf5'
+    model_checkpoint_callback = tf.keras.callbacks.\
+        ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
+                        save_best_only=True, monitor='val_loss', mode='min')
+
+    # build model
+    trainable_embed_lstm_model = build_LSTM(vocab_size, max_length, embed_size, embedding_matrix = 0, trainable = True)
+    # fit model
+    trainable_embed_history = trainable_embed_lstm_model.fit(X_train, y_train, batch_size = batch_size\
+        , epochs = 20, validation_split = 0.2, verbose = 1, callbacks = [model_checkpoint_callback])
+    # PLOT ACCURACY and LOSS evolution
     plot_training_hist(trainable_embed_history, epochs)
+
+    # The model weights (that are considered the best) are loaded into the model.
+    trainable_embed_lstm_model = load_model(checkpoint_filepath)
+
+    # Evaluate model on the TEST SET  METRICS
+    loss, accuracy, precision, recall = trainable_embed_lstm_model.evaluate(X_test, y_test, verbose=0)
+    print("\nTrainable Embeddings:")
+    print("___________________________________________________")
+    print('TEST Dataset Loss      : {:.4f}'.format(loss))
+    print('TEST Dataset Accuracy  : {:.4f}'.format(accuracy))
+    print('TEST Dataset Precision : {:.4f}'.format(precision))
+    print('TEST Dataset Recall    : {:.4f}'.format(recall))
+    print('TEST Dataset F1 Score  : {:.4f}'.format(f1_score(precision, recall)))
+    print("===================================================")'''

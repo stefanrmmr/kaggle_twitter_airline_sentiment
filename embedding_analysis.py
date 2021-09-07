@@ -1,4 +1,4 @@
-﻿
+
 # imports
 # GENERAL
 import pickle
@@ -42,8 +42,8 @@ def get_indices(word_dict, distance_ranking, custom_embed_labels):
 
 if __name__ == "__main__":
     # load embeddings and vocabulary
-    custom_embed = np.genfromtxt("model_data_keras_embedding/vectors_full_4k_128dim.tsv", delimiter = "\t")
-    custom_embed_labels = np.genfromtxt("model_data_keras_embedding/metadata_full_4k_128dim.tsv", delimiter = "\t", dtype = str)
+    custom_embed = np.genfromtxt("model_data_keras_embedding/vectors_air_500_256dim.tsv", delimiter = "\t")
+    custom_embed_labels = np.genfromtxt("model_data_keras_embedding/metadata_air_500_256dim.tsv", delimiter = "\t", dtype = str)
     #vocab = dict(enumerate(custom_embed_labels))
 
     #1) visualize embeddings
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     #print(custom_embed_labels[distance_ranking][:10])
 
     # get examples for plotting
-    indices_list = get_indices({"plane" : 2, "president" : 2, "russia" : 3}, distance_ranking, custom_embed_labels)
+    indices_list = get_indices({"plane" : 5, "amazing" : 3, "hrs" : 3}, distance_ranking, custom_embed_labels)
 
     # reduce dimensions of embeddings for plotting
     pca = PCA(n_components = 2)
