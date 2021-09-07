@@ -1,1 +1,0 @@
-https://medium.com/analytics-vidhya/understanding-embedding-layer-in-keras-bbe3ff1327ce
