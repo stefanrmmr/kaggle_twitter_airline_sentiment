@@ -1,6 +1,7 @@
 # USE CASE: use twitter API to find most recent relevant tweets for an airline and analyse their average sentiment
 # Adrian Brünger, Stefan Rummer, TUM, Python Data Analysis for Engineers, summer 2021
 
+from keras.models import load_model
 from datetime import timedelta
 from icecream import ic
 import pandas as pd
@@ -9,8 +10,6 @@ import tweepy
 import emoji
 import yaml
 import re
-from keras.models import load_model
-from keras.preprocessing.sequence import pad_sequences
 
 from plotting_framework import *
 
@@ -36,14 +35,14 @@ auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_secret)
 twitter_api = tweepy.API(auth, wait_on_rate_limit=True)
 
-max_len = 52  # model specific parameter, result of fundamental data analysis
+max_len = 33  # model specific parameter, result of fundamental data analysis
 # maximal amount of words in a tweet
 
-checkpoint_filepath = r'model_data_keras_embedding\best_model.hdf5'
+checkpoint_filepath = r'model_data_final\best_model.hdf5'
 # The model weights (that are considered the best) are loaded into the model.
 model = load_model(checkpoint_filepath)
 
-with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'rb') as handle_import:
+with open(r'model_data_final\tokenizer_save.pickle', 'rb') as handle_import:
     tokenizer_import = pickle.load(handle_import)  # load tokenizer
     # always use the same tokenizer so that word tokens are not changed
 
@@ -84,10 +83,13 @@ def tweet_cleanup(tweet_import):
     text = remove_emojis(tweet_import)              # remove all emojis after extraction
     text = text + emoji_string                      # add every emoji ONCE at the end
     text = emoji.demojize(text)                     # translate emojis into words
+
     text = text.lower()                             # convert text lower case
     text = re.sub(r"http\S+", "", text)             # text remove hyperlinks
     text = re.sub(r"#", "", text)                   # text remove hashtag symbol
     text = re.sub(r"@\S+", "", text)                # text remove @mentions
+    text = ''.join((char for char in text
+                    if not char.isdigit()))         # remove all numbers
     text = re.sub(r"'", "", text)                   # remove apostrophes
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)       # remove non letters
     text = re.sub(r"^RT[\s]+", "", text)            # remove retweet text "RT"
@@ -96,23 +98,26 @@ def tweet_cleanup(tweet_import):
     return text
 
 
-def predict_class(tweet):
+def predict_sentiment(text_input):
 
-    # apply tweet cleanup function
-    text = tweet_cleanup(tweet)
+    text_list = [tweet_cleanup(text_input)]  # Transforms text to a sequence of integers
+    sequence = tokenizer_import.texts_to_sequences(text_list)  # [[3, 157, 24, 201, 7, 156]] SHAPE
+    sequence = sequence[0]                                     # [3, 157, 24, 201, 7, 156]   SHAPE
 
-    sentiment_classes = ['Negative', 'Neutral', 'Positive']
-    # Transforms text to a sequence of integers using a tokenizer object
-    xt = tokenizer_import.texts_to_sequences(text)
-    # Pad sequences to the same length
-    xt = pad_sequences(xt, padding='post', maxlen=max_len)
-    # Do the prediction using the loaded model
-    print(f"Sentiments: {model.predict(xt)}")
+    sequence = sequence + [0] * (max_len - len(sequence))
+    # pad_sequences(output1, maxlen=max_len, padding='post')
+    df_input = pd.DataFrame(sequence)  # create dataframe
+    df_input_t = df_input.transpose()  # transpose dataframe
 
-    yt = model.predict(xt).argmax(axis=1)
-    # Print the predicted sentiment
-    print('SENTIMENT prediction: ', sentiment_classes[yt[0]])
-    return model.predict(xt)
+    sentiment_scores = model.predict(df_input_t)
+    sentiment_scores = list(sentiment_scores[0])
+    # print(f"\nSENTIMENT Scores: {sentiment_scores}")
+
+    # sentiment_classes = ['Negative', 'Neutral', 'Positive']
+    # sentiment_detected = sentiment_scores.index(max(sentiment_scores))
+    # print(f'SENTIMENT Prediction: {sentiment_classes[sentiment_detected]}')
+
+    return sentiment_scores  # [neg, neut, pos]
 
 
 def tweets_sentiment(twitter_tag, issue_name, n_tweets,
@@ -144,8 +149,7 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
         tweet_text = tweet.full_text.replace("\n", " ")         # text remove line breaks
 
         # use the model trained to evaluate the tweet text, receive sentiment scores
-        tweet_sent = predict_class(tweet_text)
-        print(tweet_sent)
+        tweet_sent = predict_sentiment(tweet_text)
         tweet_score_pos = float(tweet_sent[2])
         tweet_score_neg = float(tweet_sent[0])
         tweet_score_ntr = float(tweet_sent[1])
@@ -160,11 +164,10 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
         lst_sentdiff.append(tweet_score_pos - tweet_score_neg)
 
         print(f"tweepy {tweet_id} |{tweet_time} |"
-              f"POS[{'{:0.4f}'.format(tweet_score_pos)}], "
               f"NEG[{'{:0.4f}'.format(tweet_score_neg)}], "
-              f"NTR[{'{:0.4f}'.format(tweet_score_ntr)}] |"
+              f"NTR[{'{:0.4f}'.format(tweet_score_ntr)}], "
+              f"POS[{'{:0.4f}'.format(tweet_score_pos)}] | "
               f"{tweet_text}")
-
 
     tweets_df = pd.DataFrame(list(zip(lst_id, lst_time, lst_retweets,
                                       lst_text, lst_sentpos, lst_sentneg, lst_sentntr, lst_sentdiff)),
@@ -176,15 +179,16 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
     mean_sentpos = round(statistics.mean(tweets_df["tweet_sentpos"]), 4)
     mean_sentneg = round(statistics.mean(tweets_df["tweet_sentneg"]), 4)
     mean_sentntr = round(statistics.mean(tweets_df["tweet_sentntr"]), 4)
-    mean_sentiments = [mean_sentpos, mean_sentneg, mean_sentntr]
+    mean_sentiments = [mean_sentneg, mean_sentntr, mean_sentpos]
 
     n_tweets_analyzed = len(tweets_df)
-    first_tweet_time = lst_time[0]
-    last_tweet_time = lst_time[len(lst_time)-1]
+    last_tweet_time = lst_time[0]
+    first_tweet_time = lst_time[len(lst_time)-1]
 
     if plot:  # optionally generate a plot and save the png
         plot_box_sentiment(lst_sentdiff,
                            mean_sentiments,
+                           issue_name,
                            f"first tweet {first_tweet_time}\n"
                            f"last tweet {last_tweet_time}\n"
                            f"search tag \"{twitter_tag}\"\n"
@@ -192,13 +196,13 @@ def tweets_sentiment(twitter_tag, issue_name, n_tweets,
 
     # output the resulting mean sentiment for the analysis
     print(f"\nTwitter Sentiment Analysis - MEAN Result: "
-          f" POS[{'{:0.4f}'.format(mean_sentiments[0])}],"
-          f" NEG[{'{:0.4f}'.format(mean_sentiments[1])}],"
-          f" NTR[{'{:0.4f}'.format(mean_sentiments[2])}]")
+          f" NEG[{'{:0.4f}'.format(mean_sentiments[0])}],"
+          f" NTR[{'{:0.4f}'.format(mean_sentiments[1])}],"
+          f" POS[{'{:0.4f}'.format(mean_sentiments[2])}]")
     print(f"For \"{issue_name}\" a total of [{n_tweets_analyzed}] tweets have been found and analyzed.")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
     return mean_sentiments, n_tweets_analyzed, first_tweet_time, last_tweet_time
 
 
 # TODO test the script output for given input values
-tweets_sentiment("delta", "Delta Airlines", 5, "en", 1, "popular", True)
+tweets_sentiment("@delta", "Delta Airlines", 250, "en", 1, "recent", True)

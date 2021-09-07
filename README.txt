@@ -7,8 +7,6 @@ DATASET & SOURCES
  
   - [Kaggle] Twitter US Airline Sentiment tweets from February 2015
     https://www.kaggle.com/crowdflower/twitter-airline-sentiment?select=Tweets.csv
-  - [Kaggle] Twitter and Reddit Sentimental analysis Dataset
-    https://www.kaggle.com/cosmos98/twitter-and-reddit-sentimental-analysis-dataset?select=Twitter_Data.csv
  
 IMPLEMENTATION & METRICS
 
@@ -24,7 +22,5 @@ IMPLEMENTATION & METRICS
   
 USE CASES & APPLICATION
 
-  - analyze most recent tweets for specific airlines using titter API, 
-    compare accuracy achived (label these tweets manually) to data from kaggle
-  - analyze sentiment evolution over time durnig the COVID crisis Dez2019 - Aug2021
+  - analyze most recent tweets for specific airlines using titter API
  

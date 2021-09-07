@@ -111,10 +111,10 @@ def f1_score(precision_val, recall_val):
 
 def predict_sentiment(text_input):
 
-    with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'rb') as handle_import:
+    with open(r'model_data_final\tokenizer_save.pickle', 'rb') as handle_import:
         tokenizer_import = pickle.load(handle_import)  # load tokenizer
 
-    text_list = [text_input]  # Transforms text to a sequence of integers
+    text_list = [tweet_cleanup(text_input)]  # Transforms text to a sequence of integers
     sequence = tokenizer_import.texts_to_sequences(text_list)  # [[3, 157, 24, 201, 7, 156]] SHAPE
     sequence = sequence[0]                                     # [3, 157, 24, 201, 7, 156]   SHAPE
 
@@ -140,14 +140,15 @@ print("\n_______DAML_Twitter_Sentiment________\n")
 # IMPORT DATA TWEETS: Airlines
 df_tweets_air_full = pd.read_csv('tweets_data/Tweets_airlines.csv')
 print(df_tweets_air_full.info(), "\n")
+
 df_tweets_air = df_tweets_air_full.copy()
 df_tweets_air = df_tweets_air.rename(columns={'text': 'clean_text', 'airline_sentiment': 'category'})
 df_tweets_air['category'] = df_tweets_air['category'].map({'negative': -1.0, 'neutral': 0.0, 'positive': 1.0})
 df_tweets_air = df_tweets_air[['category', 'clean_text']]
-# IMPORT DATA TWEETS: General
+"""# IMPORT DATA TWEETS: General
 df_tweets_gen = pd.read_csv('tweets_data/Tweets_general.csv')
 df_tweets_gen = df_tweets_gen[['category', 'clean_text']]
-# COMBINE DATASETS for large amount of data, increase accuracy
+# COMBINE DATASETS for large amount of data, increase accuracy"""
 
 df_tweets = df_tweets_air
 # df_tweets = pd.concat([df_tweets_air, df_tweets_gen], ignore_index=True)
@@ -181,7 +182,7 @@ X_tweets_list, tokenizer = tokenize_pad_sequences(df_tweets['clean_text'].values
 print('After Tokenization & Padding \n', X_tweets_list[2])
 
 
-with open(r'model_data_keras_embedding\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
+with open(r'model_data_final\tokenizer_save.pickle', 'wb') as handle:  # save tokenizer
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # TARGET vector ONE HOT ENCODING (3dummy variables)
@@ -206,10 +207,11 @@ adam = Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999)
 model = Sequential()
 model.add(Embedding(vocabulary_size, embedding_size, input_length=max_len, trainable=True))
 model.add(SpatialDropout1D(0.4))
-model.add(Bidirectional(LSTM(32, dropout=0.2, recurrent_dropout=0.2)))
-# model.add(Dropout(0.4))
+model.add(Bidirectional(LSTM(32)))  # , dropout=0.2, recurrent_dropout=0.2
+# model.add(Dropout(0.2))
 model.add(Dense(3, activation='softmax'))
 
+# PLOT model structure and layers
 # tf.keras.utils.plot_model(model, show_shapes=True)
 print(model.summary())  # OUTPUT model information
 
@@ -219,7 +221,7 @@ model.compile(loss='categorical_crossentropy', optimizer=adam,
 # AUTOMATIC RESTORATION of optimal model configuration AFTER training completed
 # RESTORE the OPTIMAL NN WEIGHTS from when val_loss was minimal (epoch nr.)
 # SAVE model weights at the end of every epoch, if these are the best so far
-checkpoint_filepath = r'model_data_keras_embedding\best_model.hdf5'
+checkpoint_filepath = r'model_data_final\best_model.hdf5'
 model_checkpoint_callback = tf.keras.callbacks.\
     ModelCheckpoint(filepath=checkpoint_filepath, patience=3, verbose=1,
                     save_best_only=True, monitor='val_accuracy', mode='max')
