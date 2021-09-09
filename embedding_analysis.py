@@ -63,6 +63,7 @@ if __name__ == "__main__":
     # reduce dimensions of embeddings for plotting
     pca = PCA(n_components = 2)
     custom_embed_2d = pca.fit_transform(custom_embed)
+    print(f"variance explained by the first 2 PCs: {round(sum(pca.explained_variance_ratio_)*100, 2)}%")
     # plot
     plot_embeddings(custom_embed_2d, custom_embed_labels, indices_list)
 
