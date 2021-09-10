@@ -156,7 +156,7 @@ if __name__ == "__main__":
     print_example_processing(df_tweets, X_tp, tokenizer)
     num_ns = 4
     #print(f"shape of training data: {X_train.shape}")
-    targets, contexts, labels = generate_skipgrams(sequences = X_train[:, :], window_size = 2, num_ns = num_ns, vocab_size = vocab_size)
+    targets, contexts, labels = generate_skipgrams(sequences = X_tp[:, :], window_size = 2, num_ns = num_ns, vocab_size = vocab_size)
     # "window_size = n" means 2*n + 1 words are in the whole window
     print("\n\nExample training data:")
     print(f"target:  {targets[0]}")
