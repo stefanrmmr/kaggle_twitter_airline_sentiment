@@ -12,9 +12,11 @@ IMPLEMENTATION & METRICS
   - twitter API integration
   - tweet text preprocessing
   - word embedding/tokenization
-  - LSTM model for classification
+    (Word2Vec with continuous Skip-grams)
+  - Biderectional LSTM model based
+    classifier deep neural network
   - Hyper parameter tuning
-  - history accuracy, loss
+  - history accuracy, loss curves
   - metrics precision, recall
   - confusion matrix
   
