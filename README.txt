@@ -18,6 +18,12 @@ IMPLEMENTATION & METRICS
   - metrics precision, recall
   - confusion matrix
   
+TWITTER ACCESS DATA
+  - In order to access the full real time 
+    twitter sentiment analysis application,
+    one needs to add their Twitter credentials
+    to the twitter_acc\twitter_acc_config.yaml
+
 USE CASES & APPLICATION
   - analyze most recent tweets for
     specific airlines using titter API
