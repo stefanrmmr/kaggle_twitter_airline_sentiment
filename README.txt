@@ -12,13 +12,23 @@ IMPLEMENTATION & METRICS
   - twitter API integration
   - tweet text preprocessing
   - word embedding/tokenization
-  - LSTM model for classification
+    (Word2Vec with continuous Skip-grams)
+  - Biderectional LSTM model based
+    classifier deep neural network
   - Hyper parameter tuning
-  - history accuracy, loss
+  - history accuracy, loss curves
   - metrics precision, recall
   - confusion matrix
   
+TWITTER ACCESS DATA
+  - In order to access the full real time 
+    twitter sentiment analysis application,
+    one needs to add their Twitter credentials
+    to the twitter_acc\twitter_acc_config.yaml
+
 USE CASES & APPLICATION
   - analyze most recent tweets for
     specific airlines using titter API
     and evaluate average online sentiment
+
+
