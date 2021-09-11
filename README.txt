@@ -28,3 +28,5 @@ USE CASES & APPLICATION
   - analyze most recent tweets for
     specific airlines using titter API
     and evaluate average online sentiment
+
+
