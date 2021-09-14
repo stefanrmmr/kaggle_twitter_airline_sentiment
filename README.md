@@ -13,7 +13,7 @@
 [Kaggle] Twitter US Airline Sentiment tweets from February 2015  
 https://www.kaggle.com/crowdflower/twitter-airline-sentiment?select=Tweets.csv
   
-**IMPLEMENTATION & METRICS**
+**IMPLEMENTATION & CONTENTS**
 
 1) Exploratory data analysis 
 2) Twitter API integration
@@ -28,12 +28,10 @@ https://www.kaggle.com/crowdflower/twitter-airline-sentiment?select=Tweets.csv
   
 **TWITTER ACCESS DATA**
 
-In order to access the full real time  
-twitter sentiment analysis application,  
-one needs to add their Twitter credentials  
-to the twitter_acc\twitter_acc_config.yaml
+In order to access the full real time twitter sentiment analysis application    
+one has to add their Twitter credentials to twitter_acc\twitter_acc_config.yaml
 
 **USE CASES & APPLICATION**
 
-Analysis of most recent tweets for specific airlines using  
-titter API and evaluation of average online sentiment.
+Analysis of the most recent tweets for specific airlines using the  
+tweepy titter API liabrary and evaluation of average online sentiments. 
