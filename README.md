@@ -1,4 +1,4 @@
-## FINAL PROJECT for TUM "Python for Engineering Data Analysis - from Machine Learning to Visualization" @adrianbruenger @stefanrmmr, summer semester 2021
+## FINAL PROJECT for TUM "Python for Engineering Data Analysis - from Machine Learning to Visualization" @adrianbruenger @stefanrmmr
 
 ### "Tweet Text Sentiment Analysis using LSTMs and custom trained Word Embeddigns"
 
